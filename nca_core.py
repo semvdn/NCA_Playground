@@ -1,5 +1,6 @@
 # nca_core.py
 import numpy as np
+from collections import deque
 
 # For the matplotlib colormaps (used by the app.py, but good to keep awareness)
 # import matplotlib
@@ -118,6 +119,7 @@ class NeuralCellularAutomaton:
             # print(f"NCA Grid seed: {random_seed}")
             np.random.seed(random_seed)
         self.state = np.random.rand(grid_size, grid_size)
+        self.history = deque(maxlen=20) # Store last 20 states for step_back
 
         # Create the MLP
         self.mlp = FlexibleMLP(layer_sizes=layer_sizes,
@@ -142,8 +144,9 @@ class NeuralCellularAutomaton:
 
     def step(self):
         """Compute one iteration of the CA using the MLP rule."""
-        if self.paused:
-            return
+        # Save current state to history before stepping forward
+        self.history.append(np.copy(self.state))
+
         new_state = np.zeros_like(self.state)
         for r in range(self.grid_size):
             for c in range(self.grid_size):
@@ -151,6 +154,14 @@ class NeuralCellularAutomaton:
                 out = self.mlp.forward(neigh)
                 new_state[r, c] = out[0] if isinstance(out, np.ndarray) and out.ndim > 0 else out
         self.state = new_state
+
+    def step_back(self):
+        """Revert the simulation to a previous state from history."""
+        if self.history:
+            self.state = self.history.pop()
+            self.paused = True # Pause after stepping back
+        else:
+            print("History is empty. Cannot step back further.")
 
     def reset_grid(self, random_seed=None):
         """Re-randomize the grid state in [0..1]."""

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const toggleRunButton = document.getElementById('toggleRunButton');
     const stepButton = document.getElementById('stepButton');
+    const stepBackButton = document.getElementById('stepBackButton'); // New
     const presetSelector = document.getElementById('presetSelector');
     const colormapSelector = document.getElementById('colormapSelector');
     const layersInput = document.getElementById('layersInput');
@@ -199,10 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     stepButton.addEventListener('click', async () => {
-        if (isRunning) { // Pause if running
-            toggleRunButton.click(); // Simulate click to pause
-        }
+        // The step action should proceed regardless of the paused state.
+        // Removed logic that pauses the simulation before sending a step request.
         await handleStep();
+    });
+
+    stepBackButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/step_back', 'POST');
+        if (data) {
+            currentGridColors = data.grid_colors; // Update stored grid colors
+            drawNcaGrid(currentGridColors);
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Refresh if cell selected
+        }
     });
 
     // Enable Apply Settings button when NCA parameters change

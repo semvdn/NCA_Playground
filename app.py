@@ -123,8 +123,16 @@ def reinit_nca_route():
 def step_nca():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
-    if not nca.paused:
-        nca.step()
+    nca.step()
+    return jsonify({
+        "grid_colors": state_to_hex_colors(nca.state)
+    })
+
+@app.route('/api/step_back', methods=['POST'])
+def step_back_nca():
+    global nca
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+    nca.step_back()
     return jsonify({
         "grid_colors": state_to_hex_colors(nca.state)
     })
