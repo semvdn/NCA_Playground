@@ -286,8 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
             mlpParamsForViz = data.mlp_params_for_viz; // Update mlpParamsForViz from backend response
             buildNetworkViz(); // Redraw network visualization with new active architecture
             updateNetworkLegend();
-            selectedCell = null;
-            clearCellDetailsDisplay();
+            // selectedCell = null; // Removed: Do not clear selected cell
+            // clearCellDetailsDisplay(); // Removed: Do not clear details display
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Refresh if cell selected
             applySettingsButton.disabled = true; // Disable after successful application
             if (data.is_paused) {
                 isRunning = false;
@@ -310,8 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
             mlpParamsForViz = data.mlp_params_for_viz; // Update mlpParamsForViz from backend response
             buildNetworkViz(); // Redraw network visualization with new active architecture
             updateNetworkLegend();
-            selectedCell = null;
-            clearCellDetailsDisplay();
+            // selectedCell = null; // Removed: Do not clear selected cell
+            // clearCellDetailsDisplay(); // Removed: Do not clear details display
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Refresh if cell selected
             presetSelector.value = "Custom"; // Randomizing weights makes it a custom setup
             // Grid state is not changed, so no need to redraw grid or update currentGridColors
         }
@@ -322,8 +324,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data) {
             currentGridColors = data.grid_colors;
             drawNcaGrid(currentGridColors);
-            selectedCell = null;
-            clearCellDetailsDisplay();
+            // selectedCell = null; // Removed: Do not clear selected cell
+            // clearCellDetailsDisplay(); // Removed: Do not clear details display
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Refresh if cell selected
             if (data.is_paused) {
                 isRunning = false;
                 toggleRunButton.textContent = 'Start';
