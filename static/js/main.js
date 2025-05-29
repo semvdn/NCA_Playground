@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(hoverCellInfo);
     
-    const CELL_SIZE = 10; // Pixel size for each CA cell
+    const CELL_SIZE = 15; // Pixel size for each CA cell
     let gridSize = 50; // Default, will be updated from backend
     let isRunning = false;
     let animationIntervalId = null;
