@@ -15,8 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const weightScaleValue = document.getElementById('weightScaleValue');
     const biasSlider = document.getElementById('biasSlider');
     const biasValue = document.getElementById('biasValue');
-    const randomizeButton = document.getElementById('randomizeButton');
-    const resetGridButton = document.getElementById('resetGridButton');
+    const applySettingsButton = document.getElementById('applySettingsButton'); // New
+    const randomizeWeightsButton = document.getElementById('randomizeWeightsButton'); // New
+    const randomizeGridButton = document.getElementById('randomizeGridButton'); // New
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
 
@@ -160,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isRunning = true;
             startAnimationLoop();
         }
+        applySettingsButton.disabled = true; // Initialize apply settings button as disabled
     }
 
     async function handleStep() {
@@ -203,18 +205,45 @@ document.addEventListener('DOMContentLoaded', () => {
         await handleStep();
     });
 
-    presetSelector.addEventListener('change', async (e) => {
-        const presetName = e.target.value;
-        const data = await fetchApi('/api/apply_preset', 'POST', { preset_name: presetName });
+    // Enable Apply Settings button when NCA parameters change
+    const ncaParameterControls = [
+        presetSelector,
+        colormapSelector,
+        layersInput,
+        activationSelector,
+        weightScaleSlider,
+        biasSlider
+    ];
+
+    ncaParameterControls.forEach(control => {
+        control.addEventListener('change', () => {
+            applySettingsButton.disabled = false;
+        });
+        control.addEventListener('input', () => { // For sliders
+            applySettingsButton.disabled = false;
+        });
+    });
+
+    applySettingsButton.addEventListener('click', async () => {
+        const params = {
+            preset_name: presetSelector.value,
+            colormap_name: colormapSelector.value,
+            layer_sizes: layersInput.value,
+            activation: activationSelector.value,
+            weight_scale: parseFloat(weightScaleSlider.value),
+            bias: parseFloat(biasSlider.value)
+        };
+        const data = await fetchApi('/api/apply_settings', 'POST', params);
         if (data) {
-            currentGridColors = data.grid_colors; // Update stored grid colors
+            currentGridColors = data.grid_colors;
             drawNcaGrid(currentGridColors);
             updateUiControls(data.current_params);
             mlpParamsForViz = data.mlp_params_for_viz;
             buildNetworkViz();
-            updateNetworkLegend(); // Update legend on preset change
-            selectedCell = null; // Clear selection
+            updateNetworkLegend();
+            selectedCell = null;
             clearCellDetailsDisplay();
+            applySettingsButton.disabled = true; // Disable after successful application
             if (data.is_paused) {
                 isRunning = false;
                 toggleRunButton.textContent = 'Start';
@@ -223,49 +252,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
-    colormapSelector.addEventListener('change', async (e) => {
-        const colormapName = e.target.value;
-        const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: colormapName });
-        if (data) {
-            currentGridColors = data.grid_colors; // Update stored grid colors
-            drawNcaGrid(currentGridColors);
-        }
-    });
 
-    randomizeButton.addEventListener('click', async () => {
+    randomizeWeightsButton.addEventListener('click', async () => {
         const params = {
             layer_sizes: layersInput.value,
             activation: activationSelector.value,
             weight_scale: parseFloat(weightScaleSlider.value),
             bias: parseFloat(biasSlider.value)
         };
-        const data = await fetchApi('/api/randomize_all', 'POST', params);
+        const data = await fetchApi('/api/randomize_weights', 'POST', params);
         if (data) {
-            currentGridColors = data.grid_colors; // Update stored grid colors
-            drawNcaGrid(currentGridColors);
-            updateUiControls(data.current_params); // Update UI with potentially validated/defaulted params
             mlpParamsForViz = data.mlp_params_for_viz;
             buildNetworkViz();
-            updateNetworkLegend(); // Update legend on randomization
-            selectedCell = null; // Clear selection
+            updateNetworkLegend();
+            selectedCell = null;
             clearCellDetailsDisplay();
-            if (data.is_paused) {
-                isRunning = false;
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (animationIntervalId) clearInterval(animationIntervalId);
-            }
+            // Grid state is not changed, so no need to redraw grid or update currentGridColors
         }
     });
-    
-    resetGridButton.addEventListener('click', async () => {
-        // Optionally, you could add a seed input field in HTML and pass its value
-        const data = await fetchApi('/api/reset_grid', 'POST', { seed: Date.now() }); // Using timestamp as a simple new seed
+
+    randomizeGridButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
         if (data) {
-            currentGridColors = data.grid_colors; // Update stored grid colors
+            currentGridColors = data.grid_colors;
             drawNcaGrid(currentGridColors);
-            selectedCell = null; // Clear selection
+            selectedCell = null;
             clearCellDetailsDisplay();
             if (data.is_paused) {
                 isRunning = false;
@@ -275,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
 
     // UI Updates for sliders
     weightScaleSlider.addEventListener('input', (e) => weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1));
