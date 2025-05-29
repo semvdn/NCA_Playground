@@ -23,12 +23,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const cellInfoLabel = document.getElementById('cellInfoLabel');
     const neighborhoodDisplay = document.getElementById('neighborhoodDisplay');
     const activationDisplay = document.getElementById('activationDisplay');
+    const networkLegend = document.getElementById('networkLegend');
+    const clearSelectionButton = document.getElementById('clearSelectionButton'); // New
+    const hoverCellInfo = document.createElement('div');
+    hoverCellInfo.style.cssText = `
+        position: absolute;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 5px;
+        border-radius: 3px;
+        pointer-events: none;
+        display: none;
+        z-index: 100;
+    `;
+    document.body.appendChild(hoverCellInfo);
     
     const CELL_SIZE = 10; // Pixel size for each CA cell
     let gridSize = 50; // Default, will be updated from backend
     let isRunning = false;
     let animationIntervalId = null;
     let currentSpeed = 200;
+    let currentGridColors = null; // Store grid colors for hover
 
     let mlpParamsForViz = null; // { layer_sizes: [], weights: [[]] }
     let selectedCell = null; // { r: null, c: null }
@@ -68,6 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ncaCtx.fillStyle = gridColors[r][c];
                 ncaCtx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
+        }
+        // Re-apply highlight if a cell is selected
+        if (selectedCell) {
+            highlightNeighborhood(selectedCell.r, selectedCell.c);
         }
     }
     
@@ -126,8 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        drawNcaGrid(config.initial_grid_colors);
+        currentGridColors = config.initial_grid_colors; // Store initial grid colors
+        drawNcaGrid(currentGridColors);
         buildNetworkViz(); // Initial network draw
+        updateNetworkLegend(); // Initial legend draw
 
         if (config.is_paused) {
             toggleRunButton.textContent = 'Start';
@@ -144,7 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleStep() {
         const data = await fetchApi('/api/step', 'POST');
         if (data) {
-            drawNcaGrid(data.grid_colors);
+            currentGridColors = data.grid_colors; // Update stored grid colors
+            drawNcaGrid(currentGridColors);
             if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Refresh if cell selected
         }
     }
@@ -185,13 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const presetName = e.target.value;
         const data = await fetchApi('/api/apply_preset', 'POST', { preset_name: presetName });
         if (data) {
-            drawNcaGrid(data.grid_colors);
+            currentGridColors = data.grid_colors; // Update stored grid colors
+            drawNcaGrid(currentGridColors);
             updateUiControls(data.current_params);
             mlpParamsForViz = data.mlp_params_for_viz;
             buildNetworkViz();
+            updateNetworkLegend(); // Update legend on preset change
             selectedCell = null; // Clear selection
             clearCellDetailsDisplay();
-             if (data.is_paused) {
+            if (data.is_paused) {
                 isRunning = false;
                 toggleRunButton.textContent = 'Start';
                 toggleRunButton.classList.remove('running');
@@ -204,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const colormapName = e.target.value;
         const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: colormapName });
         if (data) {
-            drawNcaGrid(data.grid_colors);
+            currentGridColors = data.grid_colors; // Update stored grid colors
+            drawNcaGrid(currentGridColors);
         }
     });
 
@@ -217,10 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const data = await fetchApi('/api/randomize_all', 'POST', params);
         if (data) {
-            drawNcaGrid(data.grid_colors);
+            currentGridColors = data.grid_colors; // Update stored grid colors
+            drawNcaGrid(currentGridColors);
             updateUiControls(data.current_params); // Update UI with potentially validated/defaulted params
             mlpParamsForViz = data.mlp_params_for_viz;
             buildNetworkViz();
+            updateNetworkLegend(); // Update legend on randomization
             selectedCell = null; // Clear selection
             clearCellDetailsDisplay();
             if (data.is_paused) {
@@ -236,10 +263,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Optionally, you could add a seed input field in HTML and pass its value
         const data = await fetchApi('/api/reset_grid', 'POST', { seed: Date.now() }); // Using timestamp as a simple new seed
         if (data) {
-            drawNcaGrid(data.grid_colors);
+            currentGridColors = data.grid_colors; // Update stored grid colors
+            drawNcaGrid(currentGridColors);
             selectedCell = null; // Clear selection
             clearCellDetailsDisplay();
-             if (data.is_paused) {
+            if (data.is_paused) {
                 isRunning = false;
                 toggleRunButton.textContent = 'Start';
                 toggleRunButton.classList.remove('running');
@@ -358,10 +386,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCell && currentLayerActivations) {
             updateNetworkNodeColors(currentLayerActivations);
         }
+        updateNetworkLegend(); // Ensure legend is updated after network viz
     }
     
     function updateNetworkNodeColors(layerActivations) {
-         if (!netNodePositions || netNodePositions.length === 0 || !layerActivations) return;
+        if (!netNodePositions || netNodePositions.length === 0 || !layerActivations) return;
         const nodeRadius = 8;
 
         for (let layerIdx = 0; layerIdx < layerActivations.length; layerIdx++) {
@@ -386,14 +415,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    function updateNetworkLegend() {
+        if (!networkLegend) return;
+        networkLegend.innerHTML = `
+            <div><span class="color-box" style="background-color: rgb(255,0,0);"></span> Negative Weight</div>
+            <div><span class="color-box" style="background-color: rgb(0,255,0);"></span> Positive Weight</div>
+            <div><span class="color-box" style="background-color: rgb(255,255,255);"></span> Low Activation</div>
+            <div><span class="color-box" style="background-color: rgb(0,0,255);"></span> High Activation</div>
+        `;
+    }
     
     async function updateCellDetails(r, c) {
         const data = await fetchApi(`/api/cell_details?r=${r}&c=${c}`);
         if (data) {
             selectedCell = data.selected_cell;
-            cellInfoLabel.textContent = `Selected Cell: (Row=${r}, Col=${c})`;
+            cellInfoLabel.innerHTML = `Selected Cell: (Row=${r}, Col=${c}) <br> Current Value: ${currentGridColors[r][c]}`; // Display current value
             
-            let neighText = "Neighborhood (3x3):\n";
+            let neighText = "Neighborhood (3x3) - Input to MLP:\n"; // More descriptive
             data.neighborhood.forEach(row => {
                 neighText += row.map(val => val.toFixed(3)).join("  ") + "\n";
             });
@@ -406,11 +445,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(layerAct.length > 5) actSample += ", ...";
                 actText += `Layer ${i}: [${actSample}]\n`;
             });
+            actText = "Layer Activations (Input, Hidden, Output):\n"; // More descriptive
+            currentLayerActivations = data.layer_activations; // Store for re-draws
+            data.layer_activations.forEach((layerAct, i) => {
+                let actSample = layerAct.slice(0, 5).map(val => typeof val === 'number' ? val.toFixed(3) : val).join(", ");
+                if(layerAct.length > 5) actSample += ", ...";
+                actText += `Layer ${i}: [${actSample}]\n`;
+            });
             activationDisplay.textContent = actText;
 
             // Redraw network nodes with new activation colors
             // The base network structure (lines, default nodes) should already be drawn by buildNetworkViz
             updateNetworkNodeColors(data.layer_activations);
+            clearSelectionButton.style.display = 'inline-block'; // Show clear button
         } else {
             clearCellDetailsDisplay();
         }
@@ -422,7 +469,8 @@ document.addEventListener('DOMContentLoaded', () => {
         activationDisplay.textContent = "";
         selectedCell = null;
         currentLayerActivations = null;
-        // Reset network node colors to default (white) if desired, or just leave as is
+        clearSelectionButton.style.display = 'none'; // Hide clear button
+        drawNcaGrid(currentGridColors); // Redraw grid to remove highlight
         if (mlpParamsForViz) buildNetworkViz(); // This will redraw with default node colors
     }
 
@@ -435,8 +483,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
             updateCellDetails(r, c);
+            drawNcaGrid(currentGridColors); // Redraw grid to clear previous highlight
+            highlightNeighborhood(r, c); // Highlight the new neighborhood
         }
     });
+
+    // Cell hover functionality
+    ncaCanvas.addEventListener('mousemove', (event) => {
+        const rect = ncaCanvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const c = Math.floor(x / CELL_SIZE);
+        const r = Math.floor(y / CELL_SIZE);
+
+        if (r >= 0 && r < gridSize && c >= 0 && c < gridSize && currentGridColors) {
+            const cellValue = parseFloat(currentGridColors[r][c].substring(1, 7).match(/.{2}/g).map(hex => parseInt(hex, 16) / 255).reduce((a, b) => a + b) / 3).toFixed(3); // Approximate value from hex color
+            hoverCellInfo.textContent = `Cell (${r}, ${c}): ${cellValue}`;
+            hoverCellInfo.style.left = `${event.clientX + 10}px`;
+            hoverCellInfo.style.top = `${event.clientY + 10}px`;
+            hoverCellInfo.style.display = 'block';
+        } else {
+            hoverCellInfo.style.display = 'none';
+        }
+    });
+    
+    ncaCanvas.addEventListener('mouseout', () => {
+        hoverCellInfo.style.display = 'none';
+    });
+
+    clearSelectionButton.addEventListener('click', () => {
+        clearCellDetailsDisplay();
+    });
+
+    function highlightNeighborhood(r, c) {
+        ncaCtx.strokeStyle = 'yellow';
+        ncaCtx.lineWidth = 2;
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const rr = (r + dr + gridSize) % gridSize;
+                const cc = (c + dc + gridSize) % gridSize;
+                ncaCtx.strokeRect(cc * CELL_SIZE, rr * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+    }
     
     // Responsive Network Canvas (redraw on resize)
     // Debounce resize event
@@ -466,5 +555,21 @@ document.addEventListener('DOMContentLoaded', () => {
         networkCanvas.width = netContainer.clientWidth;
         networkCanvas.height = netContainer.clientHeight;
         buildNetworkViz(); // Draw network based on initial mlpParamsForViz
+        updateNetworkLegend(); // Ensure legend is drawn on init
     });
+// Collapsible sections logic
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+ 
+    for (i = 0; i < coll.length; i++) {
+      coll[i].addEventListener("click", function() {
+        this.classList.toggle("active");
+        var content = this.nextElementSibling;
+        if (content.style.display === "block") {
+          content.style.display = "none";
+        } else {
+          content.style.display = "block";
+        }
+      });
+    }
 });

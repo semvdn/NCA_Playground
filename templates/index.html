@@ -17,54 +17,68 @@
                 <div class="ca-display-container">
                     <canvas id="ncaCanvas"></canvas>
                 </div>
-                <div class="controls">
-                    <button id="toggleRunButton">Start</button>
-                    <button id="stepButton">Step</button>
-                    
-                    <label for="presetSelector">Preset:</label>
-                    <select id="presetSelector"></select>
-
-                    <label for="colormapSelector">Colormap:</label>
-                    <select id="colormapSelector"></select>
-                    <br>
-
-                    <label for="layersInput">Layers (e.g., 9,16,8,1):</label>
-                    <input type="text" id="layersInput" value="9,8,1">
-
-                    <label for="activationSelector">Activation:</label>
-                    <select id="activationSelector"></select>
-                    <br>
-
-                    <label for="weightScaleSlider">Weight Scale:</label>
-                    <input type="range" id="weightScaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
-                    <span id="weightScaleValue">1.0</span>
-
-                    <label for="biasSlider">Bias:</label>
-                    <input type="range" id="biasSlider" min="-1.0" max="1.0" step="0.1" value="0.0">
-                    <span id="biasValue">0.0</span>
-                    <br>
-                    
-                    <button id="randomizeButton">Randomize Weights & Grid</button>
-                    <button id="resetGridButton">Reset Grid (New Seed)</button>
-                    <br>
-
-                    <label for="speedSlider">Speed (ms delay):</label>
-                    <input type="range" id="speedSlider" min="50" max="1000" step="50" value="200">
-                    <span id="speedValue">200</span>
+                <button class="collapsible">Simulation Controls</button>
+                <div class="content">
+                    <div class="controls">
+                        <button id="toggleRunButton">Start</button>
+                        <button id="stepButton">Step</button>
+                        
+                        <label for="presetSelector" title="Select a predefined set of NCA parameters.">Preset:</label>
+                        <select id="presetSelector"></select>
+    
+                        <label for="colormapSelector" title="Choose the color scheme for visualizing cell states.">Colormap:</label>
+                        <select id="colormapSelector"></select>
+                        <br>
+    
+                        <label for="layersInput" title="Define the neural network architecture (e.g., 9,16,8,1 for input, hidden, output layers).">Layers (e.g., 9,16,8,1):</label>
+                        <input type="text" id="layersInput" value="9,8,1">
+    
+                        <label for="activationSelector" title="Select the activation function for hidden layers (ReLU, Sigmoid, Tanh).">Activation:</label>
+                        <select id="activationSelector"></select>
+                        <br>
+    
+                        <label for="weightScaleSlider" title="Adjust the initial magnitude of the neural network's weights.">Weight Scale:</label>
+                        <input type="range" id="weightScaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
+                        <span id="weightScaleValue">1.0</span>
+    
+                        <label for="biasSlider" title="Adjust the initial bias values in the neural network.">Bias:</label>
+                        <input type="range" id="biasSlider" min="-1.0" max="1.0" step="0.1" value="0.0">
+                        <span id="biasValue">0.0</span>
+                        <br>
+                        
+                        <button id="randomizeButton" title="Generates new random weights for the neural network and resets the grid.">Randomize Weights & Grid</button>
+                        <button id="resetGridButton" title="Resets the cellular automaton grid to a new random initial state.">Reset Grid (New Seed)</button>
+                        <br>
+    
+                        <label for="speedSlider" title="Control the simulation speed (delay between steps in milliseconds).">Speed (ms delay):</label>
+                        <input type="range" id="speedSlider" min="50" max="1000" step="50" value="200">
+                        <span id="speedValue">200</span>
+                    </div>
                 </div>
             </div>
 
             <div class="right-panel">
-                <h2>Under the Hood</h2>
-                <div id="cellInfoLabel">Click on a CA cell to see details.</div>
-                <pre id="neighborhoodDisplay"></pre>
-                <pre id="activationDisplay"></pre>
-                <div class="network-viz-container">
-                    <canvas id="networkCanvas"></canvas>
+                <button class="collapsible">Under the Hood</button>
+                <div class="content">
+                    <h2>Under the Hood</h2>
+                    <div id="cellInfoLabel">Click on a CA cell to see details.</div>
+                    <button id="clearSelectionButton" style="display: none;">Clear Selection</button>
+                    <div class="info-explanation">
+                        <p>The "Neighborhood" shows the 3x3 grid of cell values (input) around the selected cell, including the cell itself. These 9 values are fed into the neural network.</p>
+                    </div>
+                    <pre id="neighborhoodDisplay"></pre>
+                    <div class="info-explanation">
+                        <p>The "Layer Activations" display the output values of each layer in the neural network when processing the selected cell's neighborhood. This shows how the network transforms the input to produce the next cell state.</p>
+                    </div>
+                    <pre id="activationDisplay"></pre>
+                    <div class="network-viz-container">
+                        <canvas id="networkCanvas"></canvas>
+                        <div id="networkLegend" class="network-legend"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
+ 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script></body>
 </html>

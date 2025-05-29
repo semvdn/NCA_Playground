@@ -32,8 +32,8 @@ header h1 {
 }
 
 .left-panel {
-    flex: 2; /* Takes more space */
-    min-width: 520px; /* Ensure canvas and controls fit */
+    flex: 1.5; /* Takes less space than before */
+    min-width: 400px; /* Reduce minimum width */
 }
 
 .right-panel {
@@ -107,6 +107,15 @@ header h1 {
     margin-bottom: 10px;
 }
 
+.info-explanation {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 10px;
+    padding: 5px 0;
+    border-top: 1px dashed #eee;
+    border-bottom: 1px dashed #eee;
+}
+
 #neighborhoodDisplay, #activationDisplay {
     background-color: #eee;
     padding: 10px;
@@ -121,6 +130,7 @@ header h1 {
 }
 
 .network-viz-container {
+    position: relative; /* For positioning the legend */
     width: 100%;
     height: 300px; /* Default height, can be adjusted */
     border: 1px solid #ccc;
@@ -128,8 +138,60 @@ header h1 {
     overflow: hidden; /* In case canvas tries to be bigger */
 }
 
+.network-legend {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    border: 1px solid #ddd;
+    z-index: 10; /* Ensure it's above the canvas */
+}
+
+.network-legend div {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.network-legend .color-box {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #333;
+    margin-right: 8px;
+    display: inline-block;
+}
+
 #networkCanvas {
     width: 100%;
     height: 100%;
     background-color: #f0f0f0;
+}
+ 
+/* Collapsible sections */
+.collapsible {
+    background-color: #eee;
+    color: #444;
+    cursor: pointer;
+    padding: 18px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+    transition: 0.4s;
+    margin-top: 10px;
+}
+ 
+.active, .collapsible:hover {
+    background-color: #ccc;
+}
+ 
+.content {
+    padding: 0 18px;
+    display: none;
+    overflow: hidden;
+    background-color: #f1f1f1;
 }
