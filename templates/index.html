@@ -38,7 +38,11 @@
                             <select id="colormapSelector"></select>
                             <br>
                             <label for="layersInput" title="Define the neural network architecture (e.g., 9,16,8,1 for input, hidden, output layers).">Layers (e.g., 9,16,8,1):</label>
-                            <input type="text" id="layersInput" value="9,8,1">
+                            <div id="layerBuilderContainer">
+                                <!-- Dynamic layer inputs will be inserted here by JavaScript -->
+                            </div>
+                            <button id="addHiddenLayerButton">Add Hidden Layer</button>
+                            <button id="removeHiddenLayerButton">Remove Last Hidden Layer</button>
                             <label for="activationSelector" title="Select the activation function for hidden layers (ReLU, Sigmoid, Tanh).">Activation:</label>
                             <select id="activationSelector"></select>
                             <br>

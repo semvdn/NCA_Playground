@@ -26,6 +26,11 @@ PRESETS = {
 AVAILABLE_ACTIVATIONS = ["relu", "sigmoid", "tanh"]
 AVAILABLE_COLORMAPS = ["viridis", "plasma", "magma", "cividis", "inferno", "Greys", "Blues", "GnBu", "coolwarm"]
 
+# Constraints for hidden layers
+MAX_HIDDEN_LAYERS = 3
+MIN_NODE_SIZE = 1
+MAX_NODE_SIZE = 64
+
 def state_to_hex_colors(state_grid):
     """Converts the NCA state grid (floats 0-1) to hex color strings."""
     global colormap_func
@@ -260,7 +265,7 @@ def apply_settings():
 
     # 2. Handle preset or custom MLP settings
     preset_name = data.get("preset_name")
-    if preset_name:
+    if preset_name and preset_name != "Custom": # Only apply preset if it's not "Custom"
         if preset_name not in PRESETS:
             return jsonify({"error": f"Invalid preset name: {preset_name}"}), 400
         
@@ -278,28 +283,31 @@ def apply_settings():
         }
         initialize_nca(init_params)
         message = f"Settings applied: Preset '{preset_name}'."
-    else:
+    else: # This block handles both when preset_name is None or "Custom"
         # Apply custom MLP settings
         try:
-            layer_sizes_str = data.get("layers")
+            layer_sizes_str = data.get("layer_sizes")
             activation = data.get("activation")
-            weight_scale = data.get("weight_scale")
-            bias = data.get("bias")
+            weight_scale = float(data.get("weight_scale"))
+            bias = float(data.get("bias"))
 
             # Validate and parse layer_sizes
             if layer_sizes_str is None:
-                return jsonify({"error": "Missing 'layers' for custom settings."}), 400
+                return jsonify({"error": "Missing 'layer_sizes' for custom settings."}), 400
             layer_sizes = [int(x.strip()) for x in layer_sizes_str.split(',')]
             if not layer_sizes or layer_sizes[0] != 9 or layer_sizes[-1] != 1:
                 raise ValueError("Invalid layer sizes format or dimensions (must be 9, ..., 1).")
+            
+            # Additional backend validation for hidden layers
+            if len(layer_sizes) - 2 > MAX_HIDDEN_LAYERS:
+                raise ValueError(f"Too many hidden layers. Maximum allowed: {MAX_HIDDEN_LAYERS}.")
+            for i in range(1, len(layer_sizes) - 1):
+                if not (MIN_NODE_SIZE <= layer_sizes[i] <= MAX_NODE_SIZE):
+                    raise ValueError(f"Hidden layer size {layer_sizes[i]} is out of bounds ({MIN_NODE_SIZE}-{MAX_NODE_SIZE}).")
 
             # Validate activation
             if activation not in AVAILABLE_ACTIVATIONS:
                 return jsonify({"error": f"Invalid activation: {activation}"}), 400
-
-            # Validate weight_scale and bias
-            weight_scale = float(weight_scale)
-            bias = float(bias)
 
             # Update MLP weights. This keeps the current grid state.
             nca.randomize_weights(layer_sizes, activation, weight_scale, bias)
@@ -332,7 +340,7 @@ def randomize_weights_route():
     data = request.json
     try:
         # Use current MLP parameters as defaults if not provided in the request
-        layer_sizes_str = data.get("layers")
+        layer_sizes_str = data.get("layer_sizes")
         if layer_sizes_str is None:
             layer_sizes = nca.mlp.layer_sizes
             print(f"DEBUG: Using default layer_sizes: {layer_sizes}")
@@ -340,6 +348,13 @@ def randomize_weights_route():
             layer_sizes = [int(x.strip()) for x in layer_sizes_str.split(',')]
             if not layer_sizes or layer_sizes[0] != 9 or layer_sizes[-1] != 1:
                 raise ValueError("Invalid layer sizes format or dimensions (must be 9, ..., 1).")
+            
+            # Additional backend validation for hidden layers
+            if len(layer_sizes) - 2 > MAX_HIDDEN_LAYERS:
+                raise ValueError(f"Too many hidden layers. Maximum allowed: {MAX_HIDDEN_LAYERS}.")
+            for i in range(1, len(layer_sizes) - 1):
+                if not (MIN_NODE_SIZE <= layer_sizes[i] <= MAX_NODE_SIZE):
+                    raise ValueError(f"Hidden layer size {layer_sizes[i]} is out of bounds ({MIN_NODE_SIZE}-{MAX_NODE_SIZE}).")
 
         activation = data.get("activation", nca.mlp.activation_name)
         if activation not in AVAILABLE_ACTIVATIONS:

@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const stepBackButton = document.getElementById('stepBackButton'); // New
     const presetSelector = document.getElementById('presetSelector');
     const colormapSelector = document.getElementById('colormapSelector');
-    const layersInput = document.getElementById('layersInput');
+    const layerBuilderContainer = document.getElementById('layerBuilderContainer');
+    const addHiddenLayerButton = document.getElementById('addHiddenLayerButton');
+    const removeHiddenLayerButton = document.getElementById('removeHiddenLayerButton');
     const activationSelector = document.getElementById('activationSelector');
     const weightScaleSlider = document.getElementById('weightScaleSlider');
     const weightScaleValue = document.getElementById('weightScaleValue');
@@ -46,6 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let animationIntervalId = null;
     let currentSpeed = 200;
     let currentGridColors = null; // Store grid colors for hover
+    let hiddenLayerSizes = []; // Stores sizes of hidden layers, e.g., [8, 16]
+    const MAX_HIDDEN_LAYERS = 3;
+    const MIN_NODE_SIZE = 1;
+    const MAX_NODE_SIZE = 64;
 
     let mlpParamsForViz = null; // { layer_sizes: [], weights: [[]] }
     let selectedCell = null; // { r: null, c: null }
@@ -93,7 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateUiControls(params) {
-        if (params.layer_sizes) layersInput.value = params.layer_sizes.join(',');
+        if (params.layer_sizes) {
+            // Assuming params.layer_sizes is like [9, 8, 16, 1]
+            // Extract hidden layers (excluding input and output)
+            hiddenLayerSizes = params.layer_sizes.slice(1, -1);
+            renderLayerBuilder(); // Re-render the dynamic layer inputs
+        }
         if (params.activation) activationSelector.value = params.activation;
         if (params.weight_scale !== undefined) {
             weightScaleSlider.value = params.weight_scale;
@@ -142,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 bias: b_val,
                 initial_seed: seed
             });
+            presetSelector.value = initialPresetName; // Set preset selector to the loaded preset
         } else { // Fallback if no preset selected or preset data is missing
              updateUiControls(config.default_params);
         }
@@ -216,13 +228,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Enable Apply Settings button when NCA parameters change
     const ncaParameterControls = [
-        presetSelector,
-        colormapSelector,
-        layersInput,
+        colormapSelector, // presetSelector is handled separately for 'Custom' logic
         activationSelector,
         weightScaleSlider,
         biasSlider
     ];
+    // Add event listener for changes within the layer builder container
+    layerBuilderContainer.addEventListener('input', () => {
+        applySettingsButton.disabled = false;
+    });
+
+    // Handle preset selection separately to update UI and potentially mark as custom
+    presetSelector.addEventListener('change', async () => {
+        applySettingsButton.disabled = false; // Enable apply button
+        const selectedPresetName = presetSelector.value;
+        if (selectedPresetName !== "Custom") {
+            // Fetch config to get preset details and update UI controls
+            const config = await fetchApi('/api/config');
+            if (config && config.presets[selectedPresetName]) {
+                const [seed, layers, act, w_scale, b_val] = config.presets[selectedPresetName];
+                updateUiControls({
+                    layer_sizes: layers,
+                    activation: act,
+                    weight_scale: w_scale,
+                    bias: b_val,
+                    initial_seed: seed
+                });
+                // Do NOT update network visualization here. It updates on Apply Settings.
+            }
+        }
+    });
 
     ncaParameterControls.forEach(control => {
         control.addEventListener('change', () => {
@@ -237,7 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = {
             preset_name: presetSelector.value,
             colormap_name: colormapSelector.value,
-            layer_sizes: layersInput.value,
+            // Construct layer_sizes from hiddenLayerSizes array
+            layer_sizes: [9, ...hiddenLayerSizes, 1].join(','),
             activation: activationSelector.value,
             weight_scale: parseFloat(weightScaleSlider.value),
             bias: parseFloat(biasSlider.value)
@@ -247,8 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentGridColors = data.grid_colors;
             drawNcaGrid(currentGridColors);
             updateUiControls(data.current_params);
-            mlpParamsForViz = data.mlp_params_for_viz;
-            buildNetworkViz();
+            mlpParamsForViz = data.mlp_params_for_viz; // Update mlpParamsForViz from backend response
+            buildNetworkViz(); // Redraw network visualization with new active architecture
             updateNetworkLegend();
             selectedCell = null;
             clearCellDetailsDisplay();
@@ -264,18 +300,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     randomizeWeightsButton.addEventListener('click', async () => {
         const params = {
-            layer_sizes: layersInput.value,
+            layer_sizes: [9, ...hiddenLayerSizes, 1].join(','),
             activation: activationSelector.value,
             weight_scale: parseFloat(weightScaleSlider.value),
             bias: parseFloat(biasSlider.value)
         };
         const data = await fetchApi('/api/randomize_weights', 'POST', params);
         if (data) {
-            mlpParamsForViz = data.mlp_params_for_viz;
-            buildNetworkViz();
+            mlpParamsForViz = data.mlp_params_for_viz; // Update mlpParamsForViz from backend response
+            buildNetworkViz(); // Redraw network visualization with new active architecture
             updateNetworkLegend();
             selectedCell = null;
             clearCellDetailsDisplay();
+            presetSelector.value = "Custom"; // Randomizing weights makes it a custom setup
             // Grid state is not changed, so no need to redraw grid or update currentGridColors
         }
     });
@@ -494,6 +531,63 @@ document.addEventListener('DOMContentLoaded', () => {
         drawNcaGrid(currentGridColors); // Redraw grid to remove highlight
         if (mlpParamsForViz) buildNetworkViz(); // This will redraw with default node colors
     }
+
+    // --- Dynamic Layer Builder Functions ---
+    function renderLayerBuilder() {
+        layerBuilderContainer.innerHTML = ''; // Clear existing inputs
+
+        // Add input for each hidden layer
+        hiddenLayerSizes.forEach((size, index) => {
+            const layerDiv = document.createElement('div');
+            layerDiv.classList.add('layer-input-group');
+            layerDiv.innerHTML = `
+                <label for="hiddenLayer${index}">Hidden Layer ${index + 1} Size:</label>
+                <input type="number" id="hiddenLayer${index}" value="${size}"
+                       min="${MIN_NODE_SIZE}" max="${MAX_NODE_SIZE}" class="hidden-layer-input">
+            `;
+            layerBuilderContainer.appendChild(layerDiv);
+
+            // Add event listener for changes to this specific input
+            layerDiv.querySelector(`#hiddenLayer${index}`).addEventListener('input', (e) => {
+                let value = parseInt(e.target.value);
+                if (isNaN(value) || value < MIN_NODE_SIZE) {
+                    value = MIN_NODE_SIZE;
+                } else if (value > MAX_NODE_SIZE) {
+                    value = MAX_NODE_SIZE;
+                }
+                e.target.value = value; // Update input field with clamped value
+                hiddenLayerSizes[index] = value;
+                applySettingsButton.disabled = false;
+                presetSelector.value = "Custom"; // Set preset to Custom on manual change
+            });
+        });
+
+        // Update button states based on current number of hidden layers
+        addHiddenLayerButton.disabled = hiddenLayerSizes.length >= MAX_HIDDEN_LAYERS;
+        removeHiddenLayerButton.disabled = hiddenLayerSizes.length === 0;
+
+        // No immediate network visualization update here. It will update on Apply Settings.
+    }
+
+
+    // Event listeners for Add/Remove Hidden Layer buttons
+    addHiddenLayerButton.addEventListener('click', () => {
+        if (hiddenLayerSizes.length < MAX_HIDDEN_LAYERS) {
+            hiddenLayerSizes.push(8); // Default new hidden layer size
+            renderLayerBuilder();
+            applySettingsButton.disabled = false;
+            presetSelector.value = "Custom"; // Set preset to Custom on adding layer
+        }
+    });
+
+    removeHiddenLayerButton.addEventListener('click', () => {
+        if (hiddenLayerSizes.length > 0) {
+            hiddenLayerSizes.pop();
+            renderLayerBuilder();
+            applySettingsButton.disabled = false;
+            presetSelector.value = "Custom"; // Set preset to Custom on removing layer
+        }
+    });
 
     ncaCanvas.addEventListener('click', (event) => {
         const rect = ncaCanvas.getBoundingClientRect();
