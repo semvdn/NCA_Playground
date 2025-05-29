@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Cellular Automata Web UI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Neural Cellular Automata Playground</h1>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="ca-display-container">
+                    <canvas id="ncaCanvas"></canvas>
+                </div>
+                <div class="controls">
+                    <button id="toggleRunButton">Start</button>
+                    <button id="stepButton">Step</button>
+                    
+                    <label for="presetSelector">Preset:</label>
+                    <select id="presetSelector"></select>
+
+                    <label for="colormapSelector">Colormap:</label>
+                    <select id="colormapSelector"></select>
+                    <br>
+
+                    <label for="layersInput">Layers (e.g., 9,16,8,1):</label>
+                    <input type="text" id="layersInput" value="9,8,1">
+
+                    <label for="activationSelector">Activation:</label>
+                    <select id="activationSelector"></select>
+                    <br>
+
+                    <label for="weightScaleSlider">Weight Scale:</label>
+                    <input type="range" id="weightScaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
+                    <span id="weightScaleValue">1.0</span>
+
+                    <label for="biasSlider">Bias:</label>
+                    <input type="range" id="biasSlider" min="-1.0" max="1.0" step="0.1" value="0.0">
+                    <span id="biasValue">0.0</span>
+                    <br>
+                    
+                    <button id="randomizeButton">Randomize Weights & Grid</button>
+                    <button id="resetGridButton">Reset Grid (New Seed)</button>
+                    <br>
+
+                    <label for="speedSlider">Speed (ms delay):</label>
+                    <input type="range" id="speedSlider" min="50" max="1000" step="50" value="200">
+                    <span id="speedValue">200</span>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <h2>Under the Hood</h2>
+                <div id="cellInfoLabel">Click on a CA cell to see details.</div>
+                <pre id="neighborhoodDisplay"></pre>
+                <pre id="activationDisplay"></pre>
+                <div class="network-viz-container">
+                    <canvas id="networkCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script></body>
+</html>

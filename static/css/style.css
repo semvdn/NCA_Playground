@@ -1,0 +1,135 @@
+/* static/css/style.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    line-height: 1.6;
+}
+
+.container {
+    width: 95%;
+    max-width: 1600px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+header h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.main-content {
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping for smaller screens */
+    gap: 20px;
+}
+
+.left-panel {
+    flex: 2; /* Takes more space */
+    min-width: 520px; /* Ensure canvas and controls fit */
+}
+
+.right-panel {
+    flex: 1; /* Takes less space */
+    min-width: 300px;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.ca-display-container {
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    display: inline-block; /* Shrink to canvas size */
+}
+
+#ncaCanvas {
+    display: block; /* Remove extra space below canvas */
+    background-color: #eee;
+}
+
+.controls {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fdfdfd;
+}
+
+.controls label {
+    display: inline-block;
+    margin: 5px 5px 5px 0;
+}
+.controls input[type="text"],
+.controls select {
+    padding: 6px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.controls input[type="range"] {
+    vertical-align: middle;
+}
+
+.controls button {
+    padding: 8px 12px;
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 5px 2px;
+}
+.controls button:hover {
+    background-color: #4cae4c;
+}
+#toggleRunButton.running {
+    background-color: #d9534f;
+}
+#toggleRunButton.running:hover {
+    background-color: #c9302c;
+}
+
+
+.right-panel h2 {
+    margin-top: 0;
+    color: #555;
+}
+
+#cellInfoLabel {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#neighborhoodDisplay, #activationDisplay {
+    background-color: #eee;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-bottom: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.9em;
+}
+
+.network-viz-container {
+    width: 100%;
+    height: 300px; /* Default height, can be adjusted */
+    border: 1px solid #ccc;
+    margin-top: 10px;
+    overflow: hidden; /* In case canvas tries to be bigger */
+}
+
+#networkCanvas {
+    width: 100%;
+    height: 100%;
+    background-color: #f0f0f0;
+}
