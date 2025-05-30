@@ -19,10 +19,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const biasSlider = document.getElementById('biasSlider');
     const biasValue = document.getElementById('biasValue');
     const applySettingsButton = document.getElementById('applySettingsButton'); // New
-    const randomizeWeightsButton = document.getElementById('randomizeWeightsButton'); // New
-    const randomizeGridButton = document.getElementById('randomizeGridButton'); // New
+    const randomizeWeightsButton = document.getElementById('randomizeWeightsButton');
+    const randomizeGridButton = document.getElementById('randomizeGridButton');
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
+
+    // New Weight Initialization UI Elements
+    const weightSettingModeSelector = document.getElementById('weightSettingModeSelector');
+    const randomWeightSettings = document.getElementById('randomWeightSettings');
+    const presetWeightSettings = document.getElementById('presetWeightSettings');
+    const parametricWeightSettings = document.getElementById('parametricWeightSettings');
+    const directWeightSettings = document.getElementById('directWeightSettings');
+    const fileWeightSettings = document.getElementById('fileWeightSettings');
+
+    const randomSeedInput = document.getElementById('randomSeedInput');
+    const presetPatternSelect = document.getElementById('presetPatternSelect');
+    const applyPresetWeightsBtn = document.getElementById('applyPresetWeightsBtn');
+    const parametricPatternSelect = document.getElementById('parametricPatternSelect');
+    const parametricInputs = document.getElementById('parametricInputs');
+    const generateParametricWeightsBtn = document.getElementById('generateParametricWeightsBtn');
+    const directWeightGrid = directWeightSettings.querySelector('.weight-grid');
+    const applyDirectWeightsBtn = document.getElementById('applyDirectWeightsBtn');
+    const resetDirectWeightsBtn = document.getElementById('resetDirectWeightsBtn');
+    const weightFileInput = document.getElementById('weightFileInput');
+    const uploadWeightsBtn = document.getElementById('uploadWeightsBtn');
+    const downloadWeightsBtn = document.getElementById('downloadWeightsBtn');
 
     const cellInfoLabel = document.getElementById('cellInfoLabel');
     const neighborhoodDisplay = document.getElementById('neighborhoodDisplay');
@@ -115,9 +136,11 @@ document.addEventListener('DOMContentLoaded', () => {
             biasValue.textContent = parseFloat(params.bias).toFixed(1);
         }
          if (params.initial_seed !== undefined && params.initial_seed !== null) {
-            // Could display this if there's a field for it
-        }
-    }
+            randomSeedInput.value = params.initial_seed;
+         } else {
+            randomSeedInput.value = ''; // Clear if no seed
+         }
+     }
 
     async function loadInitialConfig() {
         const config = await fetchApi('/api/config');
@@ -140,6 +163,20 @@ document.addEventListener('DOMContentLoaded', () => {
             colormapSelector.add(option);
         });
         colormapSelector.value = config.current_colormap;
+
+        // Populate new weight initialization selectors
+        if (config.available_preset_patterns) {
+            config.available_preset_patterns.forEach(name => {
+                const option = new Option(name, name);
+                presetPatternSelect.add(option);
+            });
+        }
+        if (config.available_parametric_patterns) {
+            config.available_parametric_patterns.forEach(name => {
+                const option = new Option(name, name);
+                parametricPatternSelect.add(option);
+            });
+        }
 
         // Set initial control values from the first preset or default
         const initialPresetName = presetSelector.value || "Flicker";
@@ -229,13 +266,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enable Apply Settings button when NCA parameters change
     const ncaParameterControls = [
         colormapSelector, // presetSelector is handled separately for 'Custom' logic
-        activationSelector,
-        weightScaleSlider,
-        biasSlider
+        activationSelector
     ];
     // Add event listener for changes within the layer builder container
     layerBuilderContainer.addEventListener('input', () => {
         applySettingsButton.disabled = false;
+    });
+
+    // Controls that enable applySettingsButton (for NCA Parameters section)
+    [colormapSelector, activationSelector].forEach(control => {
+        control.addEventListener('change', () => {
+            applySettingsButton.disabled = false;
+        });
     });
 
     // Handle preset selection separately to update UI and potentially mark as custom
@@ -259,14 +301,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    ncaParameterControls.forEach(control => {
-        control.addEventListener('change', () => {
-            applySettingsButton.disabled = false;
-        });
-        control.addEventListener('input', () => { // For sliders
-            applySettingsButton.disabled = false;
-        });
-    });
+    // Controls that enable applySettingsButton (for NCA Parameters section)
+    // Note: weightScaleSlider and biasSlider are now part of randomWeightSettings
+    // and will not enable applySettingsButton directly.
+    // Their changes will be applied via randomizeWeightsButton or applySettingsButton
+    // if the mode is 'random' and 'Apply Settings' is clicked.
 
     applySettingsButton.addEventListener('click', async () => {
         const params = {
@@ -301,21 +340,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     randomizeWeightsButton.addEventListener('click', async () => {
         const params = {
-            layer_sizes: [9, ...hiddenLayerSizes, 1].join(','),
-            activation: activationSelector.value,
             weight_scale: parseFloat(weightScaleSlider.value),
-            bias: parseFloat(biasSlider.value)
+            bias: parseFloat(biasSlider.value),
+            random_seed: randomSeedInput.value ? parseInt(randomSeedInput.value) : null
         };
         const data = await fetchApi('/api/randomize_weights', 'POST', params);
         if (data) {
             mlpParamsForViz = data.mlp_params_for_viz; // Update mlpParamsForViz from backend response
             buildNetworkViz(); // Redraw network visualization with new active architecture
             updateNetworkLegend();
-            // selectedCell = null; // Removed: Do not clear selected cell
-            // clearCellDetailsDisplay(); // Removed: Do not clear details display
             if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Refresh if cell selected
             presetSelector.value = "Custom"; // Randomizing weights makes it a custom setup
-            // Grid state is not changed, so no need to redraw grid or update currentGridColors
         }
     });
 
@@ -337,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // UI Updates for sliders
+    // UI Updates for sliders (now only for random mode)
     weightScaleSlider.addEventListener('input', (e) => weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1));
     biasSlider.addEventListener('input', (e) => biasValue.textContent = parseFloat(e.target.value).toFixed(1));
     speedSlider.addEventListener('input', (e) => {
@@ -348,6 +383,228 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     currentSpeed = parseInt(speedSlider.value); // Initialize speed
+
+    // --- Weight Setting Mode Selection Logic ---
+    const allSettingsContainers = [
+        randomWeightSettings,
+        presetWeightSettings,
+        parametricWeightSettings,
+        directWeightSettings,
+        fileWeightSettings
+    ];
+
+    function showSelectedModeSettings(selectedMode) {
+        allSettingsContainers.forEach(container => {
+            container.style.display = 'none'; // Hide all first
+        });
+
+        switch (selectedMode) {
+            case 'random':
+                randomWeightSettings.style.display = 'block';
+                break;
+            case 'preset':
+                presetWeightSettings.style.display = 'block';
+                break;
+            case 'parametric':
+                parametricWeightSettings.style.display = 'block';
+                break;
+            case 'direct':
+                directWeightSettings.style.display = 'block';
+                break;
+            case 'file':
+                fileWeightSettings.style.display = 'block';
+                break;
+            default:
+                // Default to random if something goes wrong
+                randomWeightSettings.style.display = 'block';
+        }
+    }
+
+    // Initial display based on checked radio button
+    const initialMode = weightSettingModeSelector.querySelector('input[name="weightMode"]:checked').value;
+    showSelectedModeSettings(initialMode);
+
+    // Event listener for mode changes
+    weightSettingModeSelector.addEventListener('change', (event) => {
+        showSelectedModeSettings(event.target.value);
+    });
+
+    // --- Preset Weight Patterns ---
+    applyPresetWeightsBtn.addEventListener('click', async () => {
+        const presetName = presetPatternSelect.value;
+        const data = await fetchApi('/api/set_preset_weights', 'POST', { preset_name: presetName });
+        if (data) {
+            mlpParamsForViz = data.mlp_params_for_viz;
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            presetSelector.value = "Custom"; // Applying a preset makes it a custom setup
+        }
+    });
+
+    // --- Parametric Weight Generation ---
+    parametricPatternSelect.addEventListener('change', async () => {
+        // Clear previous parametric inputs
+        parametricInputs.innerHTML = '';
+        const selectedPattern = parametricPatternSelect.value;
+        // Fetch parameters for the selected pattern from backend
+        const config = await fetchApi('/api/config'); // Re-fetch config to get pattern details
+        if (config && config.parametric_patterns_meta && config.parametric_patterns_meta[selectedPattern]) {
+            const paramsMeta = config.parametric_patterns_meta[selectedPattern];
+            paramsMeta.forEach(param => {
+                const label = document.createElement('label');
+                label.textContent = `${param.name}:`;
+                label.setAttribute('for', `param-${param.name}`);
+                parametricInputs.appendChild(label);
+
+                const input = document.createElement('input');
+                input.type = param.type === 'float' ? 'number' : 'range';
+                input.id = `param-${param.name}`;
+                input.name = param.name;
+                input.value = param.default;
+                if (param.min !== undefined) input.min = param.min;
+                if (param.max !== undefined) input.max = param.max;
+                if (param.step !== undefined) input.step = param.step;
+                if (param.type === 'float') input.setAttribute('step', 'any'); // Allow decimal input
+
+                parametricInputs.appendChild(input);
+                
+                if (param.type === 'range') {
+                    const span = document.createElement('span');
+                    span.id = `param-${param.name}-value`;
+                    span.textContent = param.default;
+                    input.addEventListener('input', (e) => span.textContent = parseFloat(e.target.value).toFixed(param.step ? (param.step.toString().split('.')[1] || '').length : 0));
+                    parametricInputs.appendChild(span);
+                }
+                parametricInputs.appendChild(document.createElement('br'));
+            });
+        }
+    });
+
+    generateParametricWeightsBtn.addEventListener('click', async () => {
+        const patternType = parametricPatternSelect.value;
+        const parameters = {};
+        parametricInputs.querySelectorAll('input').forEach(input => {
+            parameters[input.name] = parseFloat(input.value);
+        });
+
+        const data = await fetchApi('/api/set_parametric_weights', 'POST', { pattern_type: patternType, parameters: parameters });
+        if (data) {
+            mlpParamsForViz = data.mlp_params_for_viz;
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            presetSelector.value = "Custom";
+        }
+    });
+
+    // Trigger initial load of parametric inputs if a pattern is pre-selected
+    if (parametricPatternSelect.value) {
+        parametricPatternSelect.dispatchEvent(new Event('change'));
+    }
+
+    // --- Direct Weight Editor ---
+    function createDirectWeightGrid() {
+        directWeightGrid.innerHTML = ''; // Clear existing
+        for (let r = 0; r < 3; r++) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('weight-grid-row');
+            for (let c = 0; c < 3; c++) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.classList.add('weight-input');
+                input.setAttribute('data-row', r);
+                input.setAttribute('data-col', c);
+                input.value = '0.0'; // Default to zero
+                input.step = 'any'; // Allow decimal input
+                rowDiv.appendChild(input);
+            }
+            directWeightGrid.appendChild(rowDiv);
+        }
+    }
+
+    function getDirectWeightMatrix() {
+        const matrix = [];
+        for (let r = 0; r < 3; r++) {
+            const row = [];
+            for (let c = 0; c < 3; c++) {
+                const input = directWeightGrid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                row.push(parseFloat(input.value));
+            }
+            matrix.push(row);
+        }
+        return matrix;
+    }
+
+    function setDirectWeightMatrix(matrix) {
+        if (!matrix || matrix.length !== 3 || matrix[0].length !== 3) return;
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                const input = directWeightGrid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                if (input) input.value = matrix[r][c].toFixed(3); // Display with 3 decimal places
+            }
+        }
+    }
+
+    applyDirectWeightsBtn.addEventListener('click', async () => {
+        const weightsMatrix = getDirectWeightMatrix();
+        const data = await fetchApi('/api/set_direct_weights', 'POST', { weights_matrix: weightsMatrix });
+        if (data) {
+            mlpParamsForViz = data.mlp_params_for_viz;
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            presetSelector.value = "Custom";
+        }
+    });
+
+    resetDirectWeightsBtn.addEventListener('click', () => {
+        setDirectWeightMatrix([[0,0,0],[0,0,0],[0,0,0]]);
+    });
+
+    // Initial creation of the direct weight grid
+    createDirectWeightGrid();
+
+    // --- Import/Export Weights ---
+    uploadWeightsBtn.addEventListener('click', async () => {
+        const file = weightFileInput.files[0];
+        if (!file) {
+            alert('Please select a file to upload.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const fileContent = e.target.result;
+            const data = await fetchApi('/api/upload_weights', 'POST', { file_content: fileContent, filename: file.name });
+            if (data) {
+                mlpParamsForViz = data.mlp_params_for_viz;
+                buildNetworkViz();
+                updateNetworkLegend();
+                if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+                presetSelector.value = "Custom";
+                alert('Weights uploaded successfully!');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    downloadWeightsBtn.addEventListener('click', async () => {
+        const data = await fetchApi('/api/download_weights', 'GET');
+        if (data && data.file_content && data.filename) {
+            const blob = new Blob([data.file_content], { type: 'application/json' }); // Assuming JSON for now
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            alert('Failed to download weights.');
+        }
+    });
 
 
     // --- Network Visualization ---

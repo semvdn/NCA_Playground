@@ -45,20 +45,68 @@
                             <button id="removeHiddenLayerButton">Remove Last Hidden Layer</button>
                             <label for="activationSelector" title="Select the activation function for hidden layers (ReLU, Sigmoid, Tanh).">Activation:</label>
                             <select id="activationSelector"></select>
-                            <br>
-                            <label for="weightScaleSlider" title="Adjust the initial magnitude of the neural network's weights.">Weight Scale:</label>
-                            <input type="range" id="weightScaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
-                            <span id="weightScaleValue">1.0</span>
-                            <label for="biasSlider" title="Adjust the initial bias values in the neural network.">Bias:</label>
-                            <input type="range" id="biasSlider" min="-1.0" max="1.0" step="0.1" value="0.0">
-                            <span id="biasValue">0.0</span>
-                            <br>
                             <button id="applySettingsButton">Apply Settings</button>
                         </div>
 
                         <div class="control-section">
+                            <h3>Weight Initialization</h3>
+                            <div id="weightSettingModeSelector">
+                                <input type="radio" id="modeRandom" name="weightMode" value="random" checked>
+                                <label for="modeRandom">Random Initialization</label>
+
+                                <input type="radio" id="modePreset" name="weightMode" value="preset">
+                                <label for="modePreset">Preset Patterns</label>
+
+                                <input type="radio" id="modeParametric" name="weightMode" value="parametric">
+                                <label for="modeParametric">Parametric Generation</label>
+
+                                <input type="radio" id="modeDirect" name="weightMode" value="direct">
+                                <label for="modeDirect">Direct Edit</label>
+
+                                <input type="radio" id="modeFile" name="weightMode" value="file">
+                                <label for="modeFile">Import/Export</label>
+                            </div>
+
+                            <div id="randomWeightSettings">
+                                <label for="weightScaleSlider" title="Adjust the initial magnitude of the neural network's weights.">Weight Scale:</label>
+                                <input type="range" id="weightScaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
+                                <span id="weightScaleValue">1.0</span>
+                                <label for="biasSlider" title="Adjust the initial bias values in the neural network.">Bias:</label>
+                                <input type="range" id="biasSlider" min="-1.0" max="1.0" step="0.1" value="0.0">
+                                <span id="biasValue">0.0</span>
+                                <label for="randomSeedInput" title="Enter a seed for reproducible random weight initialization.">Random Seed:</label>
+                                <input type="number" id="randomSeedInput" placeholder="Optional seed">
+                                <button id="randomizeWeightsButton">Randomize Weights</button>
+                            </div>
+
+                            <div id="presetWeightSettings" style="display: none;">
+                                <select id="presetPatternSelect"></select>
+                                <button id="applyPresetWeightsBtn">Apply Preset</button>
+                            </div>
+
+                            <div id="parametricWeightSettings" style="display: none;">
+                                <select id="parametricPatternSelect"></select>
+                                <div id="parametricInputs"></div>
+                                <button id="generateParametricWeightsBtn">Generate & Apply</button>
+                            </div>
+
+                            <div id="directWeightSettings" style="display: none;">
+                                <div class="weight-grid">
+                                    <!-- 3x3 grid of inputs will go here -->
+                                </div>
+                                <button id="applyDirectWeightsBtn">Apply Weights</button>
+                                <button id="resetDirectWeightsBtn">Reset to Zero</button>
+                            </div>
+
+                            <div id="fileWeightSettings" style="display: none;">
+                                <input type="file" id="weightFileInput" accept=".json,.csv">
+                                <button id="uploadWeightsBtn">Upload Weights</button>
+                                <button id="downloadWeightsBtn">Download Current Weights</button>
+                            </div>
+                        </div>
+
+                        <div class="control-section">
                             <h3>Randomization</h3>
-                            <button id="randomizeWeightsButton">Randomize Weights</button>
                             <button id="randomizeGridButton">Randomize Grid</button>
                         </div>
                     </div>
