@@ -32,13 +32,13 @@ header h1 {
 }
 
 .left-panel {
-    flex: 2; /* Takes more space */
-    min-width: 520px; /* Ensure canvas and controls fit */
+    flex: 1.5; 
+    min-width: 450px; /* Adjusted for new controls */
 }
 
 .right-panel {
-    flex: 1; /* Takes less space */
-    min-width: 300px;
+    flex: 1; 
+    min-width: 350px; /* Adjusted */
     background-color: #f9f9f9;
     padding: 15px;
     border-radius: 5px;
@@ -47,34 +47,58 @@ header h1 {
 .ca-display-container {
     margin-bottom: 15px;
     border: 1px solid #ccc;
-    display: inline-block; /* Shrink to canvas size */
+    display: inline-block; 
 }
 
 #ncaCanvas {
-    display: block; /* Remove extra space below canvas */
+    display: block; 
     background-color: #eee;
+    cursor: crosshair;
 }
 
 .controls {
     padding: 10px;
-    border: 1px solid #ddd;
+    /* border: 1px solid #ddd; */ /* Removed border from main controls div */
     border-radius: 5px;
     background-color: #fdfdfd;
 }
 
+.control-section {
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px 15px; /* Increased padding */
+    margin-bottom: 15px;
+    background-color: #f8f8f8;
+}
+
+.control-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    font-size: 1.1em;
+}
+
 .controls label {
     display: inline-block;
-    margin: 5px 5px 5px 0;
+    margin: 8px 5px 5px 0; /* Adjusted margin */
+    font-weight: bold;
+    font-size: 0.9em;
 }
 .controls input[type="text"],
+.controls input[type="number"], /* Added number type */
 .controls select {
-    padding: 6px;
+    padding: 7px; /* Adjusted padding */
     margin-right: 10px;
+    margin-bottom: 5px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    box-sizing: border-box; /* Important for consistent sizing */
 }
 .controls input[type="range"] {
     vertical-align: middle;
+    margin-bottom: 5px;
 }
 
 .controls button {
@@ -85,15 +109,77 @@ header h1 {
     border-radius: 4px;
     cursor: pointer;
     margin: 5px 2px;
+    font-size: 0.9em;
 }
 .controls button:hover {
     background-color: #4cae4c;
 }
+.controls button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
 #toggleRunButton.running {
     background-color: #d9534f;
 }
 #toggleRunButton.running:hover {
     background-color: #c9302c;
+}
+
+#applySettingsButton, #applyManualWeightsButton {
+    background-color: #007bff; 
+}
+
+#applySettingsButton:hover, #applyManualWeightsButton:hover {
+    background-color: #0056b3;
+}
+
+/* Layer Builder Styles */
+#layerBuilderContainer .layer-input-group {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+#layerBuilderContainer .layer-input-group label {
+    margin-right: 5px;
+    min-width: 130px; /* Align labels */
+}
+#layerBuilderContainer .layer-input-group input[type="number"] {
+    width: 60px; /* Smaller width for layer size */
+}
+
+/* Manual Weight Editor Styles */
+#manualWeightInputContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); /* Responsive grid for weights */
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    background-color: #fff;
+    border-radius: 4px;
+    max-height: 200px; /* Prevent excessive height */
+    overflow-y: auto;   /* Scroll if too many weights */
+}
+#manualWeightInputContainer .weight-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#manualWeightInputContainer .weight-input-group label {
+    font-size: 0.8em;
+    margin-bottom: 2px;
+}
+#manualWeightInputContainer .weight-input-group input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    text-align: center;
+}
+.info-text {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 10px;
 }
 
 
@@ -106,30 +192,127 @@ header h1 {
     font-weight: bold;
     margin-bottom: 10px;
 }
+#clearSelectionButton {
+    margin-left: 10px;
+    padding: 5px 8px;
+    font-size: 0.8em;
+    background-color: #777;
+}
+#clearSelectionButton:hover {
+    background-color: #555;
+}
+
+
+.info-explanation {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 10px;
+    padding: 8px; /* Added padding */
+    border-radius: 4px; /* Rounded corners */
+    background-color: #f0f0f0; /* Light background */
+}
 
 #neighborhoodDisplay, #activationDisplay {
-    background-color: #eee;
+    background-color: #e8e8e8; /* Slightly different background */
     padding: 10px;
     border-radius: 4px;
     font-family: monospace;
     white-space: pre-wrap;
     word-wrap: break-word;
     margin-bottom: 10px;
-    max-height: 200px;
+    max-height: 180px; /* Adjusted height */
     overflow-y: auto;
     font-size: 0.9em;
+    border: 1px solid #ddd;
 }
 
 .network-viz-container {
+    position: relative; 
     width: 100%;
-    height: 300px; /* Default height, can be adjusted */
+    height: 300px; 
     border: 1px solid #ccc;
     margin-top: 10px;
-    overflow: hidden; /* In case canvas tries to be bigger */
+    overflow: hidden; 
+}
+
+.network-legend {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.85); /* More opaque */
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    border: 1px solid #ddd;
+    z-index: 10; 
+}
+
+.network-legend div {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.network-legend .color-box {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #333;
+    margin-right: 8px;
+    display: inline-block;
 }
 
 #networkCanvas {
     width: 100%;
     height: 100%;
     background-color: #f0f0f0;
+}
+ 
+/* Collapsible sections */
+.collapsible {
+    background-color: #e2e2e2; /* Slightly darker */
+    color: #333; /* Darker text */
+    cursor: pointer;
+    padding: 15px 20px; /* Adjusted padding */
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 1.05em; /* Slightly larger font */
+    font-weight: bold;
+    transition: 0.3s;
+    margin-top: 10px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+ 
+.collapsible.active, .collapsible:hover {
+    background-color: #d0d0d0; /* Darker hover/active */
+}
+.collapsible:after { /* Arrow indicator */
+    content: '\02795'; /* Unicode character for "plus" sign (+) */
+    font-size: 13px;
+    color: #555;
+    float: right;
+    margin-left: 5px;
+}
+.collapsible.active:after {
+    content: "\2796"; /* Unicode character for "minus" sign (-) */
+}
+ 
+.content {
+    padding: 0 18px;
+    display: none; /* Initially hidden */
+    overflow: hidden;
+    background-color: #f9f9f9; /* Lighter than section background */
+    border-left: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+/* Specific content sections might have their own controls div inside */
+.content > .controls {
+    border: none; /* Remove border if controls is direct child */
+    background-color: transparent; /* Make it inherit background */
+    padding-top: 15px;
 }

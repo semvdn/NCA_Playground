@@ -26,6 +26,12 @@ PRESETS = {
 AVAILABLE_ACTIVATIONS = ["relu", "sigmoid", "tanh"]
 AVAILABLE_COLORMAPS = ["viridis", "plasma", "magma", "cividis", "inferno", "Greys", "Blues", "GnBu", "coolwarm"]
 
+# Constraints for hidden layers for backend validation
+MAX_HIDDEN_LAYERS_COUNT = 3 # Max number of hidden layers
+MIN_NODE_COUNT_PER_LAYER = 1
+MAX_NODE_COUNT_PER_LAYER = 32 # Reduced for sanity, was 64
+
+
 def state_to_hex_colors(state_grid):
     """Converts the NCA state grid (floats 0-1) to hex color strings."""
     global colormap_func
@@ -42,22 +48,39 @@ def state_to_hex_colors(state_grid):
         hex_colors.append(row_colors)
     return hex_colors
 
+def validate_layer_params(layer_sizes_list):
+    if not layer_sizes_list or layer_sizes_list[0] != 9 or layer_sizes_list[-1] != 1:
+        raise ValueError("Layer structure must start with 9 (input) and end with 1 (output).")
+    
+    hidden_layers = layer_sizes_list[1:-1]
+    if len(hidden_layers) > MAX_HIDDEN_LAYERS_COUNT:
+        raise ValueError(f"Maximum number of hidden layers is {MAX_HIDDEN_LAYERS_COUNT}.")
+    for size in hidden_layers:
+        if not (MIN_NODE_COUNT_PER_LAYER <= size <= MAX_NODE_COUNT_PER_LAYER):
+            raise ValueError(f"Hidden layer node count must be between {MIN_NODE_COUNT_PER_LAYER} and {MAX_NODE_COUNT_PER_LAYER}. Found: {size}")
+    return True
+
+
 def initialize_nca(params):
     global nca, NCA_GRID_SIZE
     NCA_GRID_SIZE = int(params.get("grid_size", 50))
     layer_sizes_str = params.get("layer_sizes", "9,8,1")
     try:
         layer_sizes = [int(x.strip()) for x in layer_sizes_str.split(',')]
-        if not layer_sizes or layer_sizes[0] != 9 or layer_sizes[-1] != 1: # Basic validation
-            raise ValueError("Invalid layer sizes.")
-    except:
+        validate_layer_params(layer_sizes) # Use the new validation
+    except ValueError as e:
+        print(f"Layer size validation error during init: {e}. Falling back to default.")
         layer_sizes = [9,8,1] # Default fallback
 
     activation = params.get("activation", "relu")
+    if activation not in AVAILABLE_ACTIVATIONS:
+        activation = "relu"
+
     weight_scale = float(params.get("weight_scale", 1.0))
     bias = float(params.get("bias", 0.0))
-    seed_str = params.get("seed", "None")
-    seed = None if seed_str == "None" or not seed_str else int(seed_str)
+    seed_str = params.get("seed", "None") # Handles if seed is passed as None object
+    seed = None if str(seed_str).lower() == "none" or not seed_str else int(seed_str)
+
 
     nca = NeuralCellularAutomaton(
         grid_size=NCA_GRID_SIZE,
@@ -67,10 +90,9 @@ def initialize_nca(params):
         bias=bias,
         random_seed=seed
     )
-    nca.paused = True # Start paused
+    # nca.paused = True # NCA starts paused by default in its __init__
 
 # Initialize with a default preset on startup
-# This ensures 'nca' is not None when the first API call might arrive
 initial_preset_name = "Flicker"
 initial_seed, initial_layers, initial_act, initial_w, initial_b = PRESETS[initial_preset_name]
 initial_params_for_setup = {
@@ -90,8 +112,8 @@ def index():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    global nca
-    if nca is None: # Should not happen due to startup init
+    global nca, MAX_HIDDEN_LAYERS_COUNT, MIN_NODE_COUNT_PER_LAYER, MAX_NODE_COUNT_PER_LAYER
+    if nca is None: 
         return jsonify({"error": "NCA not initialized"}), 500
 
     return jsonify({
@@ -102,31 +124,31 @@ def get_config():
         "current_colormap": current_colormap_name,
         "initial_grid_colors": state_to_hex_colors(nca.state),
         "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
-        "is_paused": nca.paused
+        "is_paused": nca.paused,
+        "constraints": {
+            "max_hidden_layers": MAX_HIDDEN_LAYERS_COUNT,
+            "min_node_size": MIN_NODE_COUNT_PER_LAYER,
+            "max_node_size": MAX_NODE_COUNT_PER_LAYER
+        }
     })
-
-@app.route('/api/reinit', methods=['POST'])
-def reinit_nca_route():
-    global nca
-    params = request.json
-    initialize_nca(params)
-    return jsonify({
-        "message": "NCA re-initialized.",
-        "grid_colors": state_to_hex_colors(nca.state),
-        "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
-        "current_params": nca.get_current_params(),
-        "is_paused": nca.paused
-    })
-
 
 @app.route('/api/step', methods=['POST'])
 def step_nca():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
-    if not nca.paused:
-        nca.step()
+    nca.step() # Step method in NCA now checks for pause state.
     return jsonify({
         "grid_colors": state_to_hex_colors(nca.state)
+    })
+
+@app.route('/api/step_back', methods=['POST'])
+def step_back_nca():
+    global nca
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+    nca.step_back()
+    return jsonify({
+        "grid_colors": state_to_hex_colors(nca.state),
+        "is_paused": nca.paused # Step back might change pause state
     })
 
 @app.route('/api/toggle_pause', methods=['POST'])
@@ -136,8 +158,109 @@ def toggle_pause():
     nca.paused = not nca.paused
     return jsonify({"is_paused": nca.paused, "message": "Toggled pause."})
 
-@app.route('/api/reset_grid', methods=['POST'])
-def reset_grid():
+
+@app.route('/api/apply_settings', methods=['POST'])
+def apply_settings():
+    global nca, current_colormap_name, colormap_func
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    data = request.json
+    
+    colormap_name = data.get("colormap_name")
+    if colormap_name:
+        if colormap_name not in AVAILABLE_COLORMAPS:
+            return jsonify({"error": f"Invalid colormap name: {colormap_name}"}), 400
+        current_colormap_name = colormap_name
+        colormap_func = get_cmap(current_colormap_name)
+
+    preset_name = data.get("preset_name")
+    current_nca_params = nca.get_current_params()
+    
+    try:
+        if preset_name and preset_name != "Custom":
+            seed, layers_list, act, w_scale, b_val = PRESETS[preset_name]
+            validate_layer_params(layers_list) # Validate preset layers
+            init_params = {
+                "grid_size": nca.grid_size,
+                "layer_sizes": ",".join(map(str, layers_list)),
+                "activation": act,
+                "weight_scale": w_scale,
+                "bias": b_val,
+                "seed": seed
+            }
+            initialize_nca(init_params) # This resets grid and sets paused to True
+            message = f"Settings applied: Preset '{preset_name}' loaded."
+        else: # Custom settings or "Custom" preset selected
+            layer_sizes_str = data.get("layer_sizes", ",".join(map(str, current_nca_params["layer_sizes"])))
+            layers_list = [int(x.strip()) for x in layer_sizes_str.split(',')]
+            validate_layer_params(layers_list) # Validate custom layers
+
+            activation = data.get("activation", current_nca_params["activation"])
+            if activation not in AVAILABLE_ACTIVATIONS:
+                raise ValueError(f"Invalid activation: {activation}")
+            
+            weight_scale = float(data.get("weight_scale", current_nca_params["weight_scale"]))
+            bias = float(data.get("bias", current_nca_params["bias"]))
+
+            # Rebuild MLP with new parameters, keeping current grid state if layers are same
+            # If layer structure changes, it's effectively a new network, so randomize_weights is appropriate.
+            # If only activation/scale/bias change for the *same* structure, we might want a different method,
+            # but randomize_weights with a new seed will also work.
+            # For simplicity, we'll use randomize_weights. A new seed will be generated.
+            nca.randomize_weights(layers_list, activation, weight_scale, bias)
+            message = "Settings applied: Custom MLP parameters."
+            if preset_name == "Custom" and data.get("layer_sizes") == ",".join(map(str,PRESETS["Custom"][1])):
+                message = "Settings applied: 'Custom' preset parameters re-applied (weights randomized)."
+
+    except ValueError as e:
+        return jsonify({"error": f"Invalid parameters: {e}"}), 400
+    except KeyError as e:
+        return jsonify({"error": f"Missing parameter for custom settings: {e}"}), 400
+
+    return jsonify({
+        "message": message,
+        "grid_colors": state_to_hex_colors(nca.state),
+        "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
+        "current_params": nca.get_current_params(),
+        "is_paused": nca.paused
+    })
+
+@app.route('/api/randomize_weights', methods=['POST'])
+def randomize_weights_route():
+    global nca
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+    data = request.json
+    try:
+        current_mlp_params = nca.mlp
+        layer_sizes_str = data.get("layer_sizes")
+        if layer_sizes_str:
+            layer_sizes = [int(x.strip()) for x in layer_sizes_str.split(',')]
+            validate_layer_params(layer_sizes)
+        else:
+            layer_sizes = current_mlp_params.layer_sizes
+
+        activation = data.get("activation", current_mlp_params.activation_name)
+        if activation not in AVAILABLE_ACTIVATIONS:
+            raise ValueError(f"Invalid activation: {activation}")
+
+        weight_scale = float(data.get("weight_scale", current_mlp_params.weight_scale))
+        bias = float(data.get("bias", current_mlp_params.bias_value))
+
+        nca.randomize_weights(layer_sizes, activation, weight_scale, bias) # New seed generated internally
+
+        return jsonify({
+            "message": "NCA weights randomized.",
+            "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
+            "current_params": nca.get_current_params(),
+            "is_paused": nca.paused
+        })
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": f"Invalid parameters for randomizing weights: {e}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"An unexpected error occurred: {e}"}), 500
+
+@app.route('/api/randomize_grid', methods=['POST'])
+def randomize_grid_route():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
     data = request.json
@@ -145,95 +268,62 @@ def reset_grid():
     if seed is not None:
         try:
             seed = int(seed)
-        except ValueError:
-            seed = None # Or handle error appropriately
-            
+            if not (0 <= seed < 2**32): seed = seed % (2**32)
+        except ValueError: seed = None
+    
     nca.reset_grid(random_seed=seed)
-    nca.paused = True # Pause after reset
     return jsonify({
+        "message": "NCA grid randomized.",
         "grid_colors": state_to_hex_colors(nca.state),
-        "is_paused": nca.paused,
-        "message": "Grid reset."
+        "is_paused": nca.paused
     })
 
-@app.route('/api/randomize_all', methods=['POST'])
-def randomize_all():
+@app.route('/api/neuron_weights', methods=['GET', 'POST'])
+def neuron_weights_route():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
-    params = request.json
-    try:
-        layer_sizes = [int(x.strip()) for x in params["layer_sizes"].split(',')]
-        if not layer_sizes or layer_sizes[0] != 9 or layer_sizes[-1] != 1:
-             raise ValueError("Invalid layer sizes.")
-    except Exception as e:
-        # print(f"Error parsing layer_sizes: {e}, using default.")
-        layer_sizes = [9,8,1] # Default fallback
 
-    activation = params["activation"]
-    weight_scale = float(params["weight_scale"])
-    bias = float(params["bias"])
+    if request.method == 'GET':
+        try:
+            layer_idx = int(request.args.get('layer_idx')) # 0-indexed for MLP's W array
+            neuron_idx = int(request.args.get('neuron_idx'))
+            
+            weights = nca.mlp.get_incoming_weights_for_neuron(layer_idx, neuron_idx)
+            return jsonify({"weights": weights})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
     
-    # Generate a new random seed for the randomization process for both MLP and grid
-    new_random_seed = np.random.randint(0, 1000000)
+    if request.method == 'POST':
+        try:
+            data = request.json
+            layer_idx = int(data['layer_idx']) # 0-indexed for MLP's W array
+            new_weights_pattern = data['weights_pattern'] # This will be a list of floats
 
-    nca.randomize_weights(layer_sizes, activation, weight_scale, bias, random_seed=new_random_seed)
-    nca.reset_grid(random_seed=new_random_seed) # Use the same new seed for grid for consistency
-    nca.paused = True # Pause after randomization
-    
-    return jsonify({
-        "message": "NCA weights and grid randomized.",
-        "grid_colors": state_to_hex_colors(nca.state),
-        "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
-        "current_params": nca.get_current_params(),
-        "is_paused": nca.paused
-    })
+            # Handle "All Neurons" case
+            if data['neuron_idx'] == 'all':
+                num_neurons_in_layer = nca.mlp.W[layer_idx].shape[1]
+                for i in range(num_neurons_in_layer):
+                    # Ensure the pattern matches the expected input size for this layer
+                    expected_input_size = nca.mlp.W[layer_idx].shape[0]
+                    if len(new_weights_pattern) != expected_input_size:
+                        return jsonify({"error": f"Weight pattern length mismatch for layer {layer_idx+1}. Expected {expected_input_size}, got {len(new_weights_pattern)}."}),400
+                    nca.mlp.set_incoming_weights_for_neuron(layer_idx, i, new_weights_pattern)
+                message = f"Weight pattern applied to all neurons in Layer {layer_idx + 1}."
+            else: # Single neuron case
+                neuron_idx = int(data['neuron_idx'])
+                nca.mlp.set_incoming_weights_for_neuron(layer_idx, neuron_idx, new_weights_pattern)
+                message = f"Weights updated for Layer {layer_idx + 1}, Neuron {neuron_idx + 1}."
+            
+            nca.history.clear() # Clear history as network changed significantly
+            return jsonify({
+                "message": message,
+                "mlp_params_for_viz": nca.mlp.get_params_for_viz(), # Send updated weights for viz
+                "current_params": nca.get_current_params(), # For consistency
+                "is_paused": nca.paused
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
 
-@app.route('/api/apply_preset', methods=['POST'])
-def apply_preset():
-    global nca, PRESETS
-    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
-    
-    preset_name = request.json.get("preset_name")
-    if preset_name not in PRESETS:
-        return jsonify({"error": "Invalid preset name"}), 400
-
-    seed, layers, act, w_scale, b_val = PRESETS[preset_name]
-    
-    init_params = {
-        "grid_size": NCA_GRID_SIZE, # Keep current grid size
-        "layer_sizes": ",".join(map(str, layers)),
-        "activation": act,
-        "weight_scale": w_scale,
-        "bias": b_val,
-        "seed": seed
-    }
-    initialize_nca(init_params) # This also sets paused = True
-
-    return jsonify({
-        "message": f"Preset '{preset_name}' applied.",
-        "grid_colors": state_to_hex_colors(nca.state),
-        "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
-        "current_params": nca.get_current_params(),
-        "is_paused": nca.paused
-    })
-
-@app.route('/api/set_colormap', methods=['POST'])
-def set_colormap_route():
-    global current_colormap_name, colormap_func, nca
-    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
-
-    data = request.json
-    cmap_name = data.get("colormap_name")
-    if cmap_name not in AVAILABLE_COLORMAPS:
-        return jsonify({"error": "Invalid colormap name"}), 400
-    
-    current_colormap_name = cmap_name
-    colormap_func = get_cmap(current_colormap_name)
-    
-    return jsonify({
-        "message": f"Colormap set to {cmap_name}.",
-        "grid_colors": state_to_hex_colors(nca.state) # Re-send grid with new colors
-    })
 
 @app.route('/api/cell_details', methods=['GET'])
 def get_cell_details():
@@ -249,16 +339,13 @@ def get_cell_details():
         return jsonify({"error": "Row/column out of bounds"}), 400
 
     neighborhood = nca.get_neighborhood(r, c)
-    layer_activations = nca.mlp.get_activations(neighborhood) # Get all layer activations
-
-    # Prepare neighborhood for display (3x3)
+    layer_activations = nca.mlp.get_activations(neighborhood) 
     neighborhood_grid = neighborhood.reshape(3,3).tolist()
 
     return jsonify({
         "selected_cell": {"r": r, "c": c},
         "neighborhood": neighborhood_grid,
-        "layer_activations": layer_activations # This now includes input layer
-        # MLP params (weights, layer_sizes) are fetched separately or on init
+        "layer_activations": layer_activations
     })
 
 
