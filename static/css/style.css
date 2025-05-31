@@ -341,3 +341,13 @@ header h1 {
     background-color: transparent; /* Make it inherit background */
     padding-top: 15px;
 }
+
+
+/* Style for the recording timer */
+#recordingTimer {
+    margin-left: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #007bff; /* Blue color for visibility */
+    vertical-align: middle;
+}

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const captureScreenshotButton = document.getElementById('captureScreenshotButton');
     const toggleRecordingButton = document.getElementById('toggleRecordingButton');
+    const recordingTimerDisplay = document.getElementById('recordingTimer');
 
     const layerBuilderContainer = document.getElementById('layerBuilderContainer');
     const addHiddenLayerButton = document.getElementById('addHiddenLayerButton');
@@ -62,7 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let mediaRecorder;
     let recordedChunks = [];
     let isRecording = false;
-    let currentGridColors = null; 
+    let recordingStartTime;
+    let recordingTimerInterval;
+    let currentGridColors = null;
     let hiddenLayerSizes = []; // Stores sizes of hidden layers from UI e.g. [8,16]
 
     // Constraints from backend
@@ -126,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function startRecording() {
         recordedChunks = [];
         const stream = ncaCanvas.captureStream(60); // 60 FPS
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 10_000_000 });
 
         mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
@@ -151,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecording = true;
         toggleRecordingButton.textContent = 'Stop Recording Video';
         toggleRecordingButton.classList.add('recording');
+        startRecordingTimer();
     }
 
     function stopRecording() {
@@ -160,6 +164,32 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecording = false;
         toggleRecordingButton.textContent = 'Start Recording Video';
         toggleRecordingButton.classList.remove('recording');
+        stopRecordingTimer();
+    }
+
+    function startRecordingTimer() {
+        recordingStartTime = Date.now();
+        recordingTimerDisplay.style.display = 'inline';
+        recordingTimerDisplay.textContent = '00:00';
+
+        if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+        recordingTimerInterval = setInterval(() => {
+            const elapsedTime = Date.now() - recordingStartTime;
+            const seconds = Math.floor(elapsedTime / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const displaySeconds = String(seconds % 60).padStart(2, '0');
+            const displayMinutes = String(minutes).padStart(2, '0');
+            recordingTimerDisplay.textContent = `${displayMinutes}:${displaySeconds}`;
+        }, 1000);
+    }
+
+    function stopRecordingTimer() {
+        if (recordingTimerInterval) {
+            clearInterval(recordingTimerInterval);
+            recordingTimerInterval = null;
+        }
+        recordingTimerDisplay.style.display = 'none';
+        recordingTimerDisplay.textContent = '00:00';
     }
 
     function drawNcaGrid(gridColors) {

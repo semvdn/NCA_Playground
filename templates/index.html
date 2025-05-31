@@ -37,15 +37,6 @@
                     </div>
                 </div>
 
-                <div class="content" style="display: block;">
-                    <div class="controls">
-                        <div class="control-section">
-                            <h3>Capture Tools</h3>
-                            <button id="captureScreenshotButton" title="Capture the current canvas content as an image.">Capture Screenshot</button>
-                            <button id="toggleRecordingButton" title="Start or stop recording the canvas content as a video.">Start Recording Video</button>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="content" style="display: block;">
                     <div class="controls">
@@ -121,6 +112,17 @@
             </div>
 
             <div class="right-panel">
+                <button class="collapsible">Capture Tools</button>
+                <div class="content">
+                    <div class="controls">
+                        <div class="control-section">
+                            <button id="captureScreenshotButton" title="Capture the current canvas content as an image.">Capture Screenshot</button>
+                            <button id="toggleRecordingButton" title="Start or stop recording the canvas content as a video.">Start Recording Video</button>
+                            <span id="recordingTimer" style="display: none;">00:00</span>
+                        </div>
+                    </div>
+                </div>
+
                 <button class="collapsible active">Under the Hood</button>
                 <div class="content" style="display: block;">
                     <h2>Cell & Network Inspector</h2>
