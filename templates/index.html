@@ -25,10 +25,24 @@
                             <button id="toggleRunButton" title="Start or stop the continuous simulation">Start</button>
                             <button id="stepButton" title="Run a single step of the simulation">Step</button>
                             <button id="stepBackButton" title="Revert to the previous grid state (if available)">Step Back</button>
+                            <button id="restartButton" title="Reinitialize and start the canvas from the last seed.">Restart</button>
                             <br>
                             <label for="speedSlider" title="Control the simulation speed (delay between steps in milliseconds).">Speed (ms delay):</label>
                             <input type="range" id="speedSlider" min="50" max="1000" step="50" value="200">
                             <span id="speedValue">200</span>
+                            <br>
+                            <label for="colormapSelector" title="Choose the color scheme for visualizing cell states.">Colormap:</label>
+                            <select id="colormapSelector"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content" style="display: block;">
+                    <div class="controls">
+                        <div class="control-section">
+                            <h3>Randomizer</h3>
+                            <button id="randomizeGridButton" title="Generate a new random grid state (keeps weights).">Randomize Grid</button>
+                            <button id="randomizeWeightsButton" title="Randomize all network weights based on current general config (keeps grid).">Randomize Weights</button>
                         </div>
                     </div>
                 </div>
@@ -40,9 +54,6 @@
                             <h3>General Configuration</h3>
                             <label for="presetSelector" title="Select a predefined set of NCA parameters.">Preset:</label>
                             <select id="presetSelector"></select>
-                            <label for="colormapSelector" title="Choose the color scheme for visualizing cell states.">Colormap:</label>
-                            <select id="colormapSelector"></select>
-                            <br>
                             <label for="activationSelector" title="Select the activation function for hidden layers (ReLU, Sigmoid, Tanh).">Activation:</label>
                             <select id="activationSelector"></select>
                             <br>
@@ -59,14 +70,8 @@
                             <button id="addHiddenLayerButton" title="Add a new hidden layer to the network (max 3).">Add Hidden Layer</button>
                             <button id="removeHiddenLayerButton" title="Remove the last added hidden layer.">Remove Last Hidden Layer</button>
                             <br>
-                            <button id="applySettingsButton" title="Apply general configuration changes. May randomize weights if structure changes." disabled>Apply General Settings</button>
                         </div>
 
-                        <div class="control-section">
-                            <h3>Randomization</h3>
-                            <button id="randomizeWeightsButton" title="Randomize all network weights based on current general config (keeps grid).">Randomize Weights</button>
-                            <button id="randomizeGridButton" title="Generate a new random grid state (keeps weights).">Randomize Grid</button>
-                        </div>
                     </div>
                 </div>
 

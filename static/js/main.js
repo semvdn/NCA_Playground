@@ -20,12 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const weightScaleValue = document.getElementById('weightScaleValue');
     const biasSlider = document.getElementById('biasSlider');
     const biasValue = document.getElementById('biasValue');
-    const applySettingsButton = document.getElementById('applySettingsButton');
+    // const applySettingsButton = document.getElementById('applySettingsButton'); // Removed
     
     const randomizeWeightsButton = document.getElementById('randomizeWeightsButton');
     const randomizeGridButton = document.getElementById('randomizeGridButton');
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
+    const restartButton = document.getElementById('restartButton');
 
     // Manual Weight Editor Elements
     const manualWeightLayerSelector = document.getElementById('manualWeightLayerSelector');
@@ -127,11 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             biasValue.textContent = parseFloat(params.bias).toFixed(1);
         }
         
-        if (fromPreset) { // If called after selecting a preset (not "Custom")
-             applySettingsButton.disabled = true; // Presets are applied immediately (or considered "applied")
-        } else {
-            // For other changes, let the individual event listeners handle the button state.
-        }
         // Reset manual weight editor if layer structure might have changed
         populateManualWeightLayerSelector();
         resetManualWeightEditorUI();
@@ -185,7 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isRunning = true;
             startAnimationLoop();
         }
-        applySettingsButton.disabled = true; 
         applyManualWeightsButton.disabled = true;
         populateManualWeightLayerSelector(); // Populate after mlpParamsForViz is set
     }
@@ -234,33 +229,49 @@ document.addEventListener('DOMContentLoaded', () => {
     stepButton.addEventListener('click', () => handleStep(false));
     stepBackButton.addEventListener('click', () => handleStep(true));
 
-    // --- General Settings Change Listeners ---
-    function onGeneralParamChange() {
-        applySettingsButton.disabled = false;
-        presetSelector.value = "Custom"; // Any manual change makes it custom
-    }
-    colormapSelector.addEventListener('change', onGeneralParamChange);
-    activationSelector.addEventListener('change', onGeneralParamChange);
-    weightScaleSlider.addEventListener('input', onGeneralParamChange);
-    biasSlider.addEventListener('input', onGeneralParamChange);
-    // Layer builder changes also call onGeneralParamChange indirectly or directly.
-
-    presetSelector.addEventListener('change', async () => {
-        const selectedPresetName = presetSelector.value;
-        if (selectedPresetName !== "Custom") {
-            const config = await fetchApi('/api/config'); // Fetch fresh presets info
-            if (config && config.presets[selectedPresetName]) {
-                const [_seed, layers, act, w_scale, b_val] = config.presets[selectedPresetName];
-                updateUiControls({layer_sizes: layers, activation: act, weight_scale: w_scale, bias: b_val}, true);
-                applySettingsButton.disabled = false; // Allow applying the chosen preset
+    randomizeGridButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
+        if (data) {
+            drawNcaGrid(data.grid_colors);
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            if (data.is_paused && isRunning) {
+                 isRunning = false;
+                toggleRunButton.textContent = 'Start';
+                toggleRunButton.classList.remove('running');
+                if (animationIntervalId) clearInterval(animationIntervalId);
             }
-        } else {
-             applySettingsButton.disabled = false; // If user explicitly selects "Custom"
         }
     });
 
+    restartButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/restart', 'POST');
+        if (data) {
+            drawNcaGrid(data.initial_grid_colors);
+            mlpParamsForViz = data.mlp_params_for_viz;
+            updateUiControls(data.current_params, true); // Treat as if a preset was applied
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            if (data.is_paused) {
+                isRunning = false;
+                toggleRunButton.textContent = 'Start';
+                toggleRunButton.classList.remove('running');
+                if (animationIntervalId) clearInterval(animationIntervalId);
+            } else {
+                isRunning = true;
+                toggleRunButton.textContent = 'Stop';
+                toggleRunButton.classList.add('running');
+                startAnimationLoop();
+            }
+            applySettingsButton.disabled = true;
+            applyManualWeightsButton.disabled = true;
+            populateManualWeightLayerSelector();
+            resetManualWeightEditorUI();
+        }
+    });
 
-    applySettingsButton.addEventListener('click', async () => {
+    // --- General Settings Change Listeners ---
+    async function applyGeneralSettings() {
         const finalLayerSizes = [9, ...hiddenLayerSizes, 1];
         // Client-side validation mirroring backend
         try {
@@ -279,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const params = {
             preset_name: presetSelector.value, // Send "Custom" if it is, or actual preset name
-            colormap_name: colormapSelector.value,
             layer_sizes: finalLayerSizes.join(','),
             activation: activationSelector.value,
             weight_scale: parseFloat(weightScaleSlider.value),
@@ -288,12 +298,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await fetchApi('/api/apply_settings', 'POST', params);
         if (data) {
             drawNcaGrid(data.grid_colors);
-            mlpParamsForViz = data.mlp_params_for_viz; 
+            mlpParamsForViz = data.mlp_params_for_viz;
             updateUiControls(data.current_params, data.message.includes("Preset")); // Pass true if preset was applied
-            buildNetworkViz(); 
+            buildNetworkViz();
             updateNetworkLegend();
-            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); 
-            applySettingsButton.disabled = true; 
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            // applySettingsButton.disabled = true; // Removed
             if (data.is_paused && isRunning) { // If server paused it
                 isRunning = false;
                 toggleRunButton.textContent = 'Start';
@@ -303,42 +313,45 @@ document.addEventListener('DOMContentLoaded', () => {
              populateManualWeightLayerSelector(); // Crucial: update after potential layer changes
              resetManualWeightEditorUI();
         }
-    });
+    }
 
-    randomizeWeightsButton.addEventListener('click', async () => {
-        const currentLayers = mlpParamsForViz ? mlpParamsForViz.layer_sizes.join(',') : [9, ...hiddenLayerSizes, 1].join(',');
-        const params = {
-            layer_sizes: currentLayers, // Use current structure
-            activation: activationSelector.value,
-            weight_scale: parseFloat(weightScaleSlider.value),
-            bias: parseFloat(biasSlider.value)
-        };
-        const data = await fetchApi('/api/randomize_weights', 'POST', params);
+    activationSelector.addEventListener('change', applyGeneralSettings);
+    weightScaleSlider.addEventListener('input', (e) => {
+        weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1);
+        applyGeneralSettings();
+    });
+    biasSlider.addEventListener('input', (e) => {
+        biasValue.textContent = parseFloat(e.target.value).toFixed(1);
+        applyGeneralSettings();
+    });
+    // Layer builder changes also call applyGeneralSettings indirectly or directly.
+
+    colormapSelector.addEventListener('change', async (e) => {
+        const newColormap = e.target.value;
+        const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: newColormap });
         if (data) {
-            mlpParamsForViz = data.mlp_params_for_viz; 
-            updateUiControls(data.current_params); // Update if backend changed something
-            buildNetworkViz(); 
-            updateNetworkLegend();
-            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
-            presetSelector.value = "Custom"; // Randomizing weights implies custom setup
-            applySettingsButton.disabled = true; // Settings are now "applied" by randomization
-            resetManualWeightEditorUI(); // Weights changed, so refresh editor
+            drawNcaGrid(data.grid_colors); // Redraw grid with new colormap
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Update cell details if selected
         }
     });
 
-    randomizeGridButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
-        if (data) {
-            drawNcaGrid(data.grid_colors);
-            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
-            if (data.is_paused && isRunning) {
-                 isRunning = false;
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (animationIntervalId) clearInterval(animationIntervalId);
+    presetSelector.addEventListener('change', async () => {
+        const selectedPresetName = presetSelector.value;
+        if (selectedPresetName !== "Custom") {
+            const config = await fetchApi('/api/config'); // Fetch fresh presets info
+            if (config && config.presets[selectedPresetName]) {
+                const [_seed, layers, act, w_scale, b_val] = config.presets[selectedPresetName];
+                updateUiControls({layer_sizes: layers, activation: act, weight_scale: w_scale, bias: b_val}, true);
+                applyGeneralSettings(); // Apply preset immediately
             }
+        } else {
+             applyGeneralSettings(); // If user explicitly selects "Custom", apply current settings
         }
     });
+
+
+
+
 
     weightScaleSlider.addEventListener('input', (e) => weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1));
     biasSlider.addEventListener('input', (e) => biasValue.textContent = parseFloat(e.target.value).toFixed(1));
@@ -365,9 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let value = parseInt(e.target.value);
                 if (isNaN(value)) value = MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND;
                 value = Math.max(MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND, Math.min(value, MAX_NODE_COUNT_PER_LAYER_FROM_BACKEND));
-                e.target.value = value; 
+                e.target.value = value;
                 hiddenLayerSizes[index] = value;
-                onGeneralParamChange();
+                applyGeneralSettings();
             });
         });
         addHiddenLayerButton.disabled = hiddenLayerSizes.length >= MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND;
@@ -376,16 +389,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addHiddenLayerButton.addEventListener('click', () => {
         if (hiddenLayerSizes.length < MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND) {
-            hiddenLayerSizes.push(8); 
+            hiddenLayerSizes.push(8);
             renderLayerBuilder();
-            onGeneralParamChange();
+            presetSelector.value = "Custom"; // Set preset to Custom when adding layers
+            applyGeneralSettings();
         }
     });
     removeHiddenLayerButton.addEventListener('click', () => {
         if (hiddenLayerSizes.length > 0) {
             hiddenLayerSizes.pop();
             renderLayerBuilder();
-            onGeneralParamChange();
+            applyGeneralSettings();
         }
     });
 
@@ -620,6 +634,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 // For "all", clear the specific message for preset application
                 manualWeightInputContainer.innerHTML = '<p>Preset applied to all neurons. Select a single neuron to see/edit its new weights.</p>';
             }
+        }
+    });
+
+    randomizeWeightsButton.addEventListener('click', async () => {
+        const currentLayers = mlpParamsForViz ? mlpParamsForViz.layer_sizes.join(',') : [9, ...hiddenLayerSizes, 1].join(',');
+        const params = {
+            layer_sizes: currentLayers, // Use current structure
+            activation: activationSelector.value,
+            weight_scale: parseFloat(weightScaleSlider.value),
+            bias: parseFloat(biasSlider.value)
+        };
+        const data = await fetchApi('/api/randomize_weights', 'POST', params);
+        if (data) {
+            mlpParamsForViz = data.mlp_params_for_viz;
+            updateUiControls(data.current_params); // Update if backend changed something
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            presetSelector.value = "Custom"; // Randomizing weights implies custom setup
+            applySettingsButton.disabled = true; // Settings are now "applied" by randomization
+            resetManualWeightEditorUI(); // Weights changed, so refresh editor
         }
     });
 

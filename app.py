@@ -166,13 +166,6 @@ def apply_settings():
 
     data = request.json
     
-    colormap_name = data.get("colormap_name")
-    if colormap_name:
-        if colormap_name not in AVAILABLE_COLORMAPS:
-            return jsonify({"error": f"Invalid colormap name: {colormap_name}"}), 400
-        current_colormap_name = colormap_name
-        colormap_func = get_cmap(current_colormap_name)
-
     preset_name = data.get("preset_name")
     current_nca_params = nca.get_current_params()
     
@@ -223,6 +216,28 @@ def apply_settings():
         "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
         "current_params": nca.get_current_params(),
         "is_paused": nca.paused
+    })
+
+@app.route('/api/set_colormap', methods=['POST'])
+def set_colormap_route():
+    global nca, current_colormap_name, colormap_func
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    data = request.json
+    colormap_name = data.get("colormap_name")
+
+    if not colormap_name:
+        return jsonify({"error": "Colormap name is required"}), 400
+    
+    if colormap_name not in AVAILABLE_COLORMAPS:
+        return jsonify({"error": f"Invalid colormap name: {colormap_name}"}), 400
+    
+    current_colormap_name = colormap_name
+    colormap_func = get_cmap(current_colormap_name)
+
+    return jsonify({
+        "message": f"Colormap set to {current_colormap_name}.",
+        "grid_colors": state_to_hex_colors(nca.state)
     })
 
 @app.route('/api/randomize_weights', methods=['POST'])
@@ -276,6 +291,36 @@ def randomize_grid_route():
         "message": "NCA grid randomized.",
         "grid_colors": state_to_hex_colors(nca.state),
         "is_paused": nca.paused
+    })
+
+@app.route('/api/restart', methods=['POST'])
+def restart_nca():
+    global nca, current_colormap_name, colormap_func
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    # Get current parameters and seed to reinitialize with
+    current_params = nca.get_current_params()
+    current_seed = current_params["initial_seed"] # Store the last used seed
+
+    # Prepare parameters for reinitialization
+    init_params = {
+        "grid_size": current_params["grid_size"],
+        "layer_sizes": ",".join(map(str, current_params["layer_sizes"])),
+        "activation": current_params["activation"],
+        "weight_scale": current_params["weight_scale"],
+        "bias": current_params["bias"],
+        "seed": current_seed # Use the last seed
+    }
+
+    initialize_nca(init_params) # This reinitializes NCA
+    nca.paused = False # Ensure it starts running after restart
+
+    return jsonify({
+        "message": "NCA reinitialized and restarted from last seed.",
+        "initial_grid_colors": state_to_hex_colors(nca.state),
+        "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
+        "current_params": nca.get_current_params(),
+        "is_paused": nca.paused # Should be False now
     })
 
 @app.route('/api/neuron_weights', methods=['GET', 'POST'])
