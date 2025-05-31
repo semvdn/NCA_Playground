@@ -346,7 +346,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     randomizeArchitectureButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/randomize_architecture', 'POST');
+        const wasRunning = isRunning; // Capture current running state
+        const data = await fetchApi('/api/randomize_architecture', 'POST', { was_running: wasRunning });
         if (data) {
             drawNcaGrid(data.grid_colors);
             mlpParamsForViz = data.mlp_params_for_viz;

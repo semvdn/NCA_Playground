@@ -304,6 +304,9 @@ def randomize_architecture_route():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
 
+    data = request.json
+    was_running = data.get("was_running", False) # Get the running state from frontend
+
     try:
         num_hidden_layers = np.random.randint(MIN_RANDOM_LAYERS, MAX_RANDOM_LAYERS + 1)
         new_layer_sizes = [9] # Input layer
@@ -328,6 +331,10 @@ def randomize_architecture_route():
             "seed": None # Generate new random weights
         }
         initialize_nca(init_params) # This resets grid and sets paused to True
+
+        # If it was running before, set it to not paused
+        if was_running:
+            nca.paused = False
 
         return jsonify({
             "message": "NCA architecture randomized and reinitialized.",
