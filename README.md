@@ -29,6 +29,19 @@ Neural Cellular Automata are a fascinating class of systems where each cell in a
     *   Capture screenshots of the NCA grid.
     *   Record video of the simulation.
 
+## Visual Showcase
+
+Here are some visual examples of the Neural Cellular Automata Web UI in action:
+
+### Screenshots
+
+![NCA Web UI Screenshot 1](assets/screenshot1.png)
+![NCA Web UI Screenshot 2](assets/screenshot2.png)
+
+### Videos
+
+<video src="assets/demo_video.mp4" controls></video>
+
 ## Project Structure
 
 *   [`app.py`](app.py): The main Flask application file. It handles web routes, manages the NCA simulation, processes user requests, and serves the frontend.
