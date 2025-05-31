@@ -17,11 +17,11 @@ colormap_func = get_cmap(current_colormap_name)
 
 # --- Presets (seed, layers, activation, weight_scale, bias) ---
 PRESETS = {
-    "Flicker":  (42,   [9,8,1],    "relu",    1.0,  0.0),
-    "Ripples":  (123,  [9,16,1],   "tanh",    2.0,  0.0),
-    "Bubbles":  (999,  [9,8,8,1],  "sigmoid", 1.5,  0.5),
-    "Patchy":   (555,  [9,8,1],    "relu",    0.5, -0.3),
-    "Custom":   (None, [9,8,1],    "relu",    1.0,  0.0) # For user settings
+    "Linear": (None, [9, 1], "relu", 1.0, 0.0),
+    "Shallow ReLU": (None, [9, 16, 1], "relu", 1.0, 0.0),
+    "Deep Tanh": (None, [9, 32, 16, 1], "tanh", 1.0, 0.0),
+    "Wide Sigmoid": (None, [9, 32, 1], "sigmoid", 1.0, 0.0),
+    "Custom": (None, [9, 8, 1], "relu", 1.0, 0.0)
 }
 AVAILABLE_ACTIVATIONS = ["relu", "sigmoid", "tanh"]
 AVAILABLE_COLORMAPS = ["viridis", "plasma", "magma", "cividis", "inferno", "Greys", "Blues", "GnBu", "coolwarm"]
@@ -99,7 +99,7 @@ def initialize_nca(params):
     # nca.paused = True # NCA starts paused by default in its __init__
 
 # Initialize with a default preset on startup
-initial_preset_name = "Flicker"
+initial_preset_name = "Linear"
 initial_seed, initial_layers, initial_act, initial_w, initial_b = PRESETS[initial_preset_name]
 initial_params_for_setup = {
     "grid_size": NCA_GRID_SIZE,
