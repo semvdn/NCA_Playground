@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const presetSelector = document.getElementById('presetSelector');
     const colormapSelector = document.getElementById('colormapSelector');
     
+    const captureScreenshotButton = document.getElementById('captureScreenshotButton');
+    const toggleRecordingButton = document.getElementById('toggleRecordingButton');
+
     const layerBuilderContainer = document.getElementById('layerBuilderContainer');
     const addHiddenLayerButton = document.getElementById('addHiddenLayerButton');
     const removeHiddenLayerButton = document.getElementById('removeHiddenLayerButton');
@@ -55,6 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let isRunning = false;
     let animationIntervalId = null;
     let currentSpeed = 200;
+
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isRecording = false;
     let currentGridColors = null; 
     let hiddenLayerSizes = []; // Stores sizes of hidden layers from UI e.g. [8,16]
 
@@ -94,6 +101,65 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Network error: ${error.message}`);
             return null;
         }
+    }
+    
+    // --- Capture Functionality ---
+    captureScreenshotButton.addEventListener('click', () => {
+        const dataURL = ncaCanvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataURL;
+        const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
+        a.download = `canvas_screenshot_${timestamp}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    toggleRecordingButton.addEventListener('click', () => {
+        if (!isRecording) {
+            startRecording();
+        } else {
+            stopRecording();
+        }
+    });
+
+    function startRecording() {
+        recordedChunks = [];
+        const stream = ncaCanvas.captureStream(60); // 60 FPS
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
+            a.download = `canvas_video_${timestamp}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url); // Clean up
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        toggleRecordingButton.textContent = 'Stop Recording Video';
+        toggleRecordingButton.classList.add('recording');
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        isRecording = false;
+        toggleRecordingButton.textContent = 'Start Recording Video';
+        toggleRecordingButton.classList.remove('recording');
     }
 
     function drawNcaGrid(gridColors) {

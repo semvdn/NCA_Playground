@@ -127,6 +127,31 @@ header h1 {
     background-color: #c9302c;
 }
 
+/* Styles for Capture Buttons */
+#captureScreenshotButton {
+    background-color: #28a745; /* Green for success/capture */
+}
+
+#captureScreenshotButton:hover {
+    background-color: #218838;
+}
+
+#toggleRecordingButton {
+    background-color: #007bff; /* Blue for primary action */
+}
+
+#toggleRecordingButton:hover {
+    background-color: #0056b3;
+}
+
+#toggleRecordingButton.recording {
+    background-color: #dc3545; /* Red when recording (danger) */
+}
+
+#toggleRecordingButton.recording:hover {
+    background-color: #c82333;
+}
+
 #applySettingsButton, #applyManualWeightsButton {
     background-color: #007bff; 
 }
