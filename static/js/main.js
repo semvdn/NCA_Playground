@@ -724,9 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Highlight selected neuron for editing
                 // selectedNeuronForEditing.layer is 1-indexed (UI layer number)
                 // selectedNeuronForEditing.neuron is 0-indexed (neuron index in that UI layer) or "all"
-                if (selectedNeuronForEditing.layer === i && // current layer `i` matches selected UI layer
-                    selectedNeuronForEditing.neuron !== "all" &&
-                    selectedNeuronForEditing.neuron === j) {
+                if (selectedNeuronForEditing.layer === i && // current layer `i` (0-indexed) matches selected UI layer (1-indexed)
+                    (selectedNeuronForEditing.neuron === "all" || selectedNeuronForEditing.neuron === j)) {
                     networkCtx.strokeStyle = "magenta"; // Highlight color
                     networkCtx.lineWidth = 2.5;
                 }
