@@ -33,14 +33,21 @@ Neural Cellular Automata are a fascinating class of systems where each cell in a
 
 Here are some visual examples of the Neural Cellular Automata Web UI in action:
 
-### Screenshots
-
-![NCA Web UI Screenshot 1](assets/screenshot1.png)
-![NCA Web UI Screenshot 2](assets/screenshot2.png)
-
 ### Videos
 
-<video src="assets/demo_video.mp4" controls></video>
+Here are videos demonstrating the Neural Cellular Automata Web UI in action:
+
+#### Canvas Simulations
+#### Canvas Simulations
+<div style="display: flex; flex-wrap: wrap; justify-content: space-around;">
+    <video src="assets/canvas_video_1.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
+    <video src="assets/canvas_video_2.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
+    <video src="assets/canvas_video_3.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
+    <video src="assets/canvas_video_4.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
+</div>
+
+#### Web UI Walkthrough
+<video src="assets/showcase.mp4" controls loop muted style="width: 100%;"></video>
 
 ## Project Structure
 
@@ -104,7 +111,7 @@ Once the application is running and you've opened it in your browser, you can:
 *   Adjust the **Speed** slider to control the animation rate.
 *   Select different **Colormaps** to change the visual representation of the cell states.
 *   Utilize the **Randomizer** buttons to generate new grids, randomize network weights, or create entirely new network architectures.
-*   In the **NCA Architecture** section, choose **Presets** or configure a **Custom** network by adjusting hidden layer sizes, activation functions, weight scale, and bias.
+*   In the **NCA Architecture** section, choose **Presets** or configure a **Custom** network by adjusting hidden layer sizes, activation functions, weight scale, and bias. Changes are applied immediately.
 *   Explore the **Manual Neuron Weight Editor** to fine-tune individual neuron weights or apply predefined patterns.
 *   Click on any cell in the main grid to view its **Neighborhood** input and the **Layer Activations** within the neural network in the "Under the Hood" panel.
 *   Observe the **Network Visualization** to see the MLP structure and how weights are distributed.
