@@ -4,8 +4,8 @@ import numpy as np
 from matplotlib.cm import get_cmap
 import matplotlib
 matplotlib.use("Agg") # Important for server-side matplotlib without GUI
-
-from nca_core import NeuralCellularAutomaton # Import from your nca_core.py
+import torch
+from nca_core import NeuralCellularAutomaton, DEVICE # Import DEVICE from nca_core.py
 
 app = Flask(__name__)
 
@@ -39,17 +39,30 @@ MAX_RANDOM_NODES = 10
 
 
 def state_to_hex_colors(state_grid):
-    """Converts the NCA state grid (floats 0-1) to hex color strings."""
+    """Converts the NCA state grid (floats 0-1) to hex color strings using vectorized operations."""
     global colormap_func
+    
+    # Ensure state_grid is a numpy array for colormap_func
+    if torch.is_tensor(state_grid):
+        state_grid_np = state_grid.cpu().detach().numpy()
+    else:
+        state_grid_np = state_grid
+
+    # Normalize values to [0, 1] and apply colormap
+    normalized_grid = np.clip(state_grid_np, 0., 1.)
+    rgba_colors = colormap_func(normalized_grid) # This returns (H, W, 4) array of floats
+
+    # Convert RGBA floats (0-1) to byte integers (0-255)
+    byte_colors = (rgba_colors[:, :, :3] * 255).astype(np.uint8) # Take only RGB channels
+
+    # Format to hex strings. This part still involves iteration, but it's on pre-processed data.
+    # A more advanced approach might involve a custom C/Cython extension or WebGL for frontend rendering.
+    # For now, this is a significant improvement over per-pixel colormap application.
     hex_colors = []
-    for r in range(state_grid.shape[0]):
+    for r in range(byte_colors.shape[0]):
         row_colors = []
-        for c in range(state_grid.shape[1]):
-            val = max(0., min(state_grid[r, c], 1.))
-            rgba = colormap_func(val)
-            r_byte = int(rgba[0] * 255)
-            g_byte = int(rgba[1] * 255)
-            b_byte = int(rgba[2] * 255)
+        for c in range(byte_colors.shape[1]):
+            r_byte, g_byte, b_byte = byte_colors[r, c]
             row_colors.append(f"#{r_byte:02x}{g_byte:02x}{b_byte:02x}")
         hex_colors.append(row_colors)
     return hex_colors
@@ -250,6 +263,11 @@ def set_colormap_route():
 def randomize_weights_route():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+    
+    # Store current state and pause status
+    current_state = nca.state.cpu().clone()
+    was_paused = nca.paused
+    
     data = request.json
     try:
         current_mlp_params = nca.mlp
@@ -267,10 +285,22 @@ def randomize_weights_route():
         weight_scale = float(data.get("weight_scale", current_mlp_params.weight_scale))
         bias = float(data.get("bias", current_mlp_params.bias_value))
 
-        nca.randomize_weights(layer_sizes, activation, weight_scale, bias) # New seed generated internally
+        # Reinitialize NCA with new weights but preserve the grid state
+        # This will also reset history, which is desired as the network changed
+        nca = NeuralCellularAutomaton(
+            grid_size=nca.grid_size,
+            layer_sizes=layer_sizes,
+            activation=activation,
+            weight_scale=weight_scale,
+            bias=bias,
+            random_seed=None, # Generate new random weights
+            initial_state=current_state # Reinitialize with the last frame
+        )
+        nca.paused = was_paused # Restore original pause state
 
         return jsonify({
             "message": "NCA weights randomized.",
+            "grid_colors": state_to_hex_colors(nca.state), # Send updated grid colors
             "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
             "current_params": nca.get_current_params(),
             "is_paused": nca.paused
@@ -400,10 +430,10 @@ def neuron_weights_route():
 
             # Handle "All Neurons" case
             if data['neuron_idx'] == 'all':
-                num_neurons_in_layer = nca.mlp.W[layer_idx].shape[1]
+                num_neurons_in_layer = nca.mlp.layers[layer_idx].weight.shape[0] # out_dim
                 for i in range(num_neurons_in_layer):
                     # Ensure the pattern matches the expected input size for this layer
-                    expected_input_size = nca.mlp.W[layer_idx].shape[0]
+                    expected_input_size = nca.mlp.layers[layer_idx].weight.shape[1] # in_dim
                     if len(new_weights_pattern) != expected_input_size:
                         return jsonify({"error": f"Weight pattern length mismatch for layer {layer_idx+1}. Expected {expected_input_size}, got {len(new_weights_pattern)}."}),400
                     nca.mlp.set_incoming_weights_for_neuron(layer_idx, i, new_weights_pattern)
