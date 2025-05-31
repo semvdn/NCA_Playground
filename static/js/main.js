@@ -1,9 +1,11 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', () => {
+
     const ncaCanvas = document.getElementById('ncaCanvas');
     const ncaCtx = ncaCanvas.getContext('2d');
     const networkCanvas = document.getElementById('networkCanvas');
     const networkCtx = networkCanvas.getContext('2d');
+    const leftPanel = document.getElementById('leftPanel');
 
     const toggleRunButton = document.getElementById('toggleRunButton');
     const stepButton = document.getElementById('stepButton');
@@ -205,9 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ncaCtx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
+
         if (selectedCell) {
             highlightNeighborhood(selectedCell.r, selectedCell.c);
         }
+        // Set the left panel width to match the canvas width
+        leftPanel.style.width = `${ncaCanvas.width}px`;
     }
     
     function updateUiControls(params, fromPreset = false) {

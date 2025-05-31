@@ -31,11 +31,6 @@ header h1 {
     gap: 20px;
 }
 
-.left-panel {
-    flex: 1.5; 
-    min-width: 450px; /* Adjusted for new controls */
-}
-
 .right-panel {
     flex: 1; 
     min-width: 350px; /* Adjusted */
@@ -47,7 +42,8 @@ header h1 {
 .ca-display-container {
     margin-bottom: 15px;
     border: 1px solid #ccc;
-    display: inline-block; 
+    display: inline-block;
+    width: fit-content; /* Ensure container wraps canvas */
 }
 
 #ncaCanvas {
