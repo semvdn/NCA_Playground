@@ -31,11 +31,6 @@ header h1 {
     gap: 20px;
 }
 
-.left-panel {
-    flex: 1.5; 
-    min-width: 450px; /* Adjusted for new controls */
-}
-
 .right-panel {
     flex: 1; 
     min-width: 350px; /* Adjusted */
@@ -47,7 +42,8 @@ header h1 {
 .ca-display-container {
     margin-bottom: 15px;
     border: 1px solid #ccc;
-    display: inline-block; 
+    display: inline-block;
+    width: fit-content; /* Ensure container wraps canvas */
 }
 
 #ncaCanvas {
@@ -125,6 +121,31 @@ header h1 {
 }
 #toggleRunButton.running:hover {
     background-color: #c9302c;
+}
+
+/* Styles for Capture Buttons */
+#captureScreenshotButton {
+    background-color: #28a745; /* Green for success/capture */
+}
+
+#captureScreenshotButton:hover {
+    background-color: #218838;
+}
+
+#toggleRecordingButton {
+    background-color: #007bff; /* Blue for primary action */
+}
+
+#toggleRecordingButton:hover {
+    background-color: #0056b3;
+}
+
+#toggleRecordingButton.recording {
+    background-color: #dc3545; /* Red when recording (danger) */
+}
+
+#toggleRecordingButton.recording:hover {
+    background-color: #c82333;
 }
 
 #applySettingsButton, #applyManualWeightsButton {
@@ -315,4 +336,14 @@ header h1 {
     border: none; /* Remove border if controls is direct child */
     background-color: transparent; /* Make it inherit background */
     padding-top: 15px;
+}
+
+
+/* Style for the recording timer */
+#recordingTimer {
+    margin-left: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #007bff; /* Blue color for visibility */
+    vertical-align: middle;
 }

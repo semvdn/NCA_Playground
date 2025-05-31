@@ -1,9 +1,11 @@
 // static/js/main.js
 document.addEventListener('DOMContentLoaded', () => {
+
     const ncaCanvas = document.getElementById('ncaCanvas');
     const ncaCtx = ncaCanvas.getContext('2d');
     const networkCanvas = document.getElementById('networkCanvas');
     const networkCtx = networkCanvas.getContext('2d');
+    const leftPanel = document.getElementById('leftPanel');
 
     const toggleRunButton = document.getElementById('toggleRunButton');
     const stepButton = document.getElementById('stepButton');
@@ -11,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const presetSelector = document.getElementById('presetSelector');
     const colormapSelector = document.getElementById('colormapSelector');
     
+    const captureScreenshotButton = document.getElementById('captureScreenshotButton');
+    const toggleRecordingButton = document.getElementById('toggleRecordingButton');
+    const recordingTimerDisplay = document.getElementById('recordingTimer');
+
     const layerBuilderContainer = document.getElementById('layerBuilderContainer');
     const addHiddenLayerButton = document.getElementById('addHiddenLayerButton');
     const removeHiddenLayerButton = document.getElementById('removeHiddenLayerButton');
@@ -20,12 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const weightScaleValue = document.getElementById('weightScaleValue');
     const biasSlider = document.getElementById('biasSlider');
     const biasValue = document.getElementById('biasValue');
-    const applySettingsButton = document.getElementById('applySettingsButton');
+    // const applySettingsButton = document.getElementById('applySettingsButton'); // Removed
     
     const randomizeWeightsButton = document.getElementById('randomizeWeightsButton');
     const randomizeGridButton = document.getElementById('randomizeGridButton');
+    const randomizeArchitectureButton = document.getElementById('randomizeArchitectureButton');
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
+    const restartButton = document.getElementById('restartButton');
 
     // Manual Weight Editor Elements
     const manualWeightLayerSelector = document.getElementById('manualWeightLayerSelector');
@@ -53,7 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let isRunning = false;
     let animationIntervalId = null;
     let currentSpeed = 200;
-    let currentGridColors = null; 
+
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isRecording = false;
+    let recordingStartTime;
+    let recordingTimerInterval;
+    let currentGridColors = null;
     let hiddenLayerSizes = []; // Stores sizes of hidden layers from UI e.g. [8,16]
 
     // Constraints from backend
@@ -93,6 +107,92 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
     }
+    
+    // --- Capture Functionality ---
+    captureScreenshotButton.addEventListener('click', () => {
+        const dataURL = ncaCanvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataURL;
+        const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
+        a.download = `canvas_screenshot_${timestamp}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    toggleRecordingButton.addEventListener('click', () => {
+        if (!isRecording) {
+            startRecording();
+        } else {
+            stopRecording();
+        }
+    });
+
+    function startRecording() {
+        recordedChunks = [];
+        const stream = ncaCanvas.captureStream(60); // 60 FPS
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/mp4; codecs=avc1.42001E', videoBitsPerSecond: 20_000_000 });
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
+            a.download = `canvas_video_${timestamp}.mp4`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url); // Clean up
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        toggleRecordingButton.textContent = 'Stop Recording Video';
+        toggleRecordingButton.classList.add('recording');
+        startRecordingTimer();
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        isRecording = false;
+        toggleRecordingButton.textContent = 'Start Recording Video';
+        toggleRecordingButton.classList.remove('recording');
+        stopRecordingTimer();
+    }
+
+    function startRecordingTimer() {
+        recordingStartTime = Date.now();
+        recordingTimerDisplay.style.display = 'inline';
+        recordingTimerDisplay.textContent = '00:00';
+
+        if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+        recordingTimerInterval = setInterval(() => {
+            const elapsedTime = Date.now() - recordingStartTime;
+            const seconds = Math.floor(elapsedTime / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const displaySeconds = String(seconds % 60).padStart(2, '0');
+            const displayMinutes = String(minutes).padStart(2, '0');
+            recordingTimerDisplay.textContent = `${displayMinutes}:${displaySeconds}`;
+        }, 1000);
+    }
+
+    function stopRecordingTimer() {
+        if (recordingTimerInterval) {
+            clearInterval(recordingTimerInterval);
+            recordingTimerInterval = null;
+        }
+        recordingTimerDisplay.style.display = 'none';
+        recordingTimerDisplay.textContent = '00:00';
+    }
 
     function drawNcaGrid(gridColors) {
         if (!gridColors || gridColors.length === 0) return;
@@ -107,9 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ncaCtx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
+
         if (selectedCell) {
             highlightNeighborhood(selectedCell.r, selectedCell.c);
         }
+        // Set the left panel width to match the canvas width
+        leftPanel.style.width = `${ncaCanvas.width}px`;
     }
     
     function updateUiControls(params, fromPreset = false) {
@@ -127,11 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
             biasValue.textContent = parseFloat(params.bias).toFixed(1);
         }
         
-        if (fromPreset) { // If called after selecting a preset (not "Custom")
-             applySettingsButton.disabled = true; // Presets are applied immediately (or considered "applied")
-        } else {
-            // For other changes, let the individual event listeners handle the button state.
-        }
         // Reset manual weight editor if layer structure might have changed
         populateManualWeightLayerSelector();
         resetManualWeightEditorUI();
@@ -185,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isRunning = true;
             startAnimationLoop();
         }
-        applySettingsButton.disabled = true; 
         applyManualWeightsButton.disabled = true;
         populateManualWeightLayerSelector(); // Populate after mlpParamsForViz is set
     }
@@ -234,33 +331,76 @@ document.addEventListener('DOMContentLoaded', () => {
     stepButton.addEventListener('click', () => handleStep(false));
     stepBackButton.addEventListener('click', () => handleStep(true));
 
-    // --- General Settings Change Listeners ---
-    function onGeneralParamChange() {
-        applySettingsButton.disabled = false;
-        presetSelector.value = "Custom"; // Any manual change makes it custom
-    }
-    colormapSelector.addEventListener('change', onGeneralParamChange);
-    activationSelector.addEventListener('change', onGeneralParamChange);
-    weightScaleSlider.addEventListener('input', onGeneralParamChange);
-    biasSlider.addEventListener('input', onGeneralParamChange);
-    // Layer builder changes also call onGeneralParamChange indirectly or directly.
-
-    presetSelector.addEventListener('change', async () => {
-        const selectedPresetName = presetSelector.value;
-        if (selectedPresetName !== "Custom") {
-            const config = await fetchApi('/api/config'); // Fetch fresh presets info
-            if (config && config.presets[selectedPresetName]) {
-                const [_seed, layers, act, w_scale, b_val] = config.presets[selectedPresetName];
-                updateUiControls({layer_sizes: layers, activation: act, weight_scale: w_scale, bias: b_val}, true);
-                applySettingsButton.disabled = false; // Allow applying the chosen preset
+    randomizeGridButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
+        if (data) {
+            drawNcaGrid(data.grid_colors);
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            if (data.is_paused && isRunning) {
+                 isRunning = false;
+                toggleRunButton.textContent = 'Start';
+                toggleRunButton.classList.remove('running');
+                if (animationIntervalId) clearInterval(animationIntervalId);
             }
-        } else {
-             applySettingsButton.disabled = false; // If user explicitly selects "Custom"
         }
     });
 
+    randomizeArchitectureButton.addEventListener('click', async () => {
+        const wasRunning = isRunning; // Capture current running state
+        const data = await fetchApi('/api/randomize_architecture', 'POST', { was_running: wasRunning });
+        if (data) {
+            drawNcaGrid(data.grid_colors);
+            mlpParamsForViz = data.mlp_params_for_viz;
+            updateUiControls(data.current_params, true);
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            if (data.is_paused) {
+                isRunning = false;
+                toggleRunButton.textContent = 'Start';
+                toggleRunButton.classList.remove('running');
+                if (animationIntervalId) clearInterval(animationIntervalId);
+            } else {
+                isRunning = true;
+                toggleRunButton.textContent = 'Stop';
+                toggleRunButton.classList.add('running');
+                startAnimationLoop();
+            }
+            applyManualWeightsButton.disabled = true;
+            populateManualWeightLayerSelector();
+            resetManualWeightEditorUI();
+        }
+    });
 
-    applySettingsButton.addEventListener('click', async () => {
+    restartButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/restart', 'POST');
+        if (data) {
+            drawNcaGrid(data.initial_grid_colors);
+            mlpParamsForViz = data.mlp_params_for_viz;
+            updateUiControls(data.current_params, true); // Treat as if a preset was applied
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            if (data.is_paused) {
+                isRunning = false;
+                toggleRunButton.textContent = 'Start';
+                toggleRunButton.classList.remove('running');
+                if (animationIntervalId) clearInterval(animationIntervalId);
+            } else {
+                isRunning = true;
+                toggleRunButton.textContent = 'Stop';
+                toggleRunButton.classList.add('running');
+                startAnimationLoop();
+            }
+            applySettingsButton.disabled = true;
+            applyManualWeightsButton.disabled = true;
+            populateManualWeightLayerSelector();
+            resetManualWeightEditorUI();
+        }
+    });
+
+    // --- General Settings Change Listeners ---
+    async function applyGeneralSettings() {
         const finalLayerSizes = [9, ...hiddenLayerSizes, 1];
         // Client-side validation mirroring backend
         try {
@@ -279,7 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const params = {
             preset_name: presetSelector.value, // Send "Custom" if it is, or actual preset name
-            colormap_name: colormapSelector.value,
             layer_sizes: finalLayerSizes.join(','),
             activation: activationSelector.value,
             weight_scale: parseFloat(weightScaleSlider.value),
@@ -288,12 +427,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await fetchApi('/api/apply_settings', 'POST', params);
         if (data) {
             drawNcaGrid(data.grid_colors);
-            mlpParamsForViz = data.mlp_params_for_viz; 
+            mlpParamsForViz = data.mlp_params_for_viz;
             updateUiControls(data.current_params, data.message.includes("Preset")); // Pass true if preset was applied
-            buildNetworkViz(); 
+            buildNetworkViz();
             updateNetworkLegend();
-            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); 
-            applySettingsButton.disabled = true; 
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            // applySettingsButton.disabled = true; // Removed
             if (data.is_paused && isRunning) { // If server paused it
                 isRunning = false;
                 toggleRunButton.textContent = 'Start';
@@ -303,42 +442,45 @@ document.addEventListener('DOMContentLoaded', () => {
              populateManualWeightLayerSelector(); // Crucial: update after potential layer changes
              resetManualWeightEditorUI();
         }
-    });
+    }
 
-    randomizeWeightsButton.addEventListener('click', async () => {
-        const currentLayers = mlpParamsForViz ? mlpParamsForViz.layer_sizes.join(',') : [9, ...hiddenLayerSizes, 1].join(',');
-        const params = {
-            layer_sizes: currentLayers, // Use current structure
-            activation: activationSelector.value,
-            weight_scale: parseFloat(weightScaleSlider.value),
-            bias: parseFloat(biasSlider.value)
-        };
-        const data = await fetchApi('/api/randomize_weights', 'POST', params);
+    activationSelector.addEventListener('change', applyGeneralSettings);
+    weightScaleSlider.addEventListener('input', (e) => {
+        weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1);
+        applyGeneralSettings();
+    });
+    biasSlider.addEventListener('input', (e) => {
+        biasValue.textContent = parseFloat(e.target.value).toFixed(1);
+        applyGeneralSettings();
+    });
+    // Layer builder changes also call applyGeneralSettings indirectly or directly.
+
+    colormapSelector.addEventListener('change', async (e) => {
+        const newColormap = e.target.value;
+        const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: newColormap });
         if (data) {
-            mlpParamsForViz = data.mlp_params_for_viz; 
-            updateUiControls(data.current_params); // Update if backend changed something
-            buildNetworkViz(); 
-            updateNetworkLegend();
-            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
-            presetSelector.value = "Custom"; // Randomizing weights implies custom setup
-            applySettingsButton.disabled = true; // Settings are now "applied" by randomization
-            resetManualWeightEditorUI(); // Weights changed, so refresh editor
+            drawNcaGrid(data.grid_colors); // Redraw grid with new colormap
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c); // Update cell details if selected
         }
     });
 
-    randomizeGridButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
-        if (data) {
-            drawNcaGrid(data.grid_colors);
-            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
-            if (data.is_paused && isRunning) {
-                 isRunning = false;
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (animationIntervalId) clearInterval(animationIntervalId);
+    presetSelector.addEventListener('change', async () => {
+        const selectedPresetName = presetSelector.value;
+        if (selectedPresetName !== "Custom") {
+            const config = await fetchApi('/api/config'); // Fetch fresh presets info
+            if (config && config.presets[selectedPresetName]) {
+                const [_seed, layers, act, w_scale, b_val] = config.presets[selectedPresetName];
+                updateUiControls({layer_sizes: layers, activation: act, weight_scale: w_scale, bias: b_val}, true);
+                applyGeneralSettings(); // Apply preset immediately
             }
+        } else {
+             applyGeneralSettings(); // If user explicitly selects "Custom", apply current settings
         }
     });
+
+
+
+
 
     weightScaleSlider.addEventListener('input', (e) => weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1));
     biasSlider.addEventListener('input', (e) => biasValue.textContent = parseFloat(e.target.value).toFixed(1));
@@ -365,9 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let value = parseInt(e.target.value);
                 if (isNaN(value)) value = MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND;
                 value = Math.max(MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND, Math.min(value, MAX_NODE_COUNT_PER_LAYER_FROM_BACKEND));
-                e.target.value = value; 
+                e.target.value = value;
                 hiddenLayerSizes[index] = value;
-                onGeneralParamChange();
+                applyGeneralSettings();
             });
         });
         addHiddenLayerButton.disabled = hiddenLayerSizes.length >= MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND;
@@ -376,16 +518,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addHiddenLayerButton.addEventListener('click', () => {
         if (hiddenLayerSizes.length < MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND) {
-            hiddenLayerSizes.push(8); 
+            hiddenLayerSizes.push(8);
             renderLayerBuilder();
-            onGeneralParamChange();
+            presetSelector.value = "Custom"; // Set preset to Custom when adding layers
+            applyGeneralSettings();
         }
     });
     removeHiddenLayerButton.addEventListener('click', () => {
         if (hiddenLayerSizes.length > 0) {
             hiddenLayerSizes.pop();
             renderLayerBuilder();
-            onGeneralParamChange();
+            applyGeneralSettings();
         }
     });
 
@@ -623,6 +766,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    randomizeWeightsButton.addEventListener('click', async () => {
+        const currentLayers = mlpParamsForViz ? mlpParamsForViz.layer_sizes.join(',') : [9, ...hiddenLayerSizes, 1].join(',');
+        const params = {
+            layer_sizes: currentLayers, // Use current structure
+            activation: activationSelector.value,
+            weight_scale: parseFloat(weightScaleSlider.value),
+            bias: parseFloat(biasSlider.value)
+        };
+        const data = await fetchApi('/api/randomize_weights', 'POST', params);
+        if (data) {
+            mlpParamsForViz = data.mlp_params_for_viz;
+            updateUiControls(data.current_params); // Update if backend changed something
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            presetSelector.value = "Custom"; // Randomizing weights implies custom setup
+            applySettingsButton.disabled = true; // Settings are now "applied" by randomization
+            resetManualWeightEditorUI(); // Weights changed, so refresh editor
+        }
+    });
+
     function resetManualWeightEditorUI() {
         manualWeightLayerSelector.value = "";
         manualWeightNeuronSelector.innerHTML = '<option value="">- Select Neuron -</option>';
@@ -724,9 +888,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Highlight selected neuron for editing
                 // selectedNeuronForEditing.layer is 1-indexed (UI layer number)
                 // selectedNeuronForEditing.neuron is 0-indexed (neuron index in that UI layer) or "all"
-                if (selectedNeuronForEditing.layer === i && // current layer `i` matches selected UI layer
-                    selectedNeuronForEditing.neuron !== "all" &&
-                    selectedNeuronForEditing.neuron === j) {
+                if (selectedNeuronForEditing.layer === i && // current layer `i` (0-indexed) matches selected UI layer (1-indexed)
+                    (selectedNeuronForEditing.neuron === "all" || selectedNeuronForEditing.neuron === j)) {
                     networkCtx.strokeStyle = "magenta"; // Highlight color
                     networkCtx.lineWidth = 2.5;
                 }

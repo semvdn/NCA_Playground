@@ -4,8 +4,8 @@ import numpy as np
 from matplotlib.cm import get_cmap
 import matplotlib
 matplotlib.use("Agg") # Important for server-side matplotlib without GUI
-
-from nca_core import NeuralCellularAutomaton # Import from your nca_core.py
+import torch
+from nca_core import NeuralCellularAutomaton, DEVICE # Import DEVICE from nca_core.py
 
 app = Flask(__name__)
 
@@ -17,11 +17,11 @@ colormap_func = get_cmap(current_colormap_name)
 
 # --- Presets (seed, layers, activation, weight_scale, bias) ---
 PRESETS = {
-    "Flicker":  (42,   [9,8,1],    "relu",    1.0,  0.0),
-    "Ripples":  (123,  [9,16,1],   "tanh",    2.0,  0.0),
-    "Bubbles":  (999,  [9,8,8,1],  "sigmoid", 1.5,  0.5),
-    "Patchy":   (555,  [9,8,1],    "relu",    0.5, -0.3),
-    "Custom":   (None, [9,8,1],    "relu",    1.0,  0.0) # For user settings
+    "Linear": (None, [9, 1], "relu", 1.0, 0.0),
+    "Shallow ReLU": (None, [9, 16, 1], "relu", 1.0, 0.0),
+    "Deep Tanh": (None, [9, 32, 16, 1], "tanh", 1.0, 0.0),
+    "Wide Sigmoid": (None, [9, 32, 1], "sigmoid", 1.0, 0.0),
+    "Custom": (None, [9, 8, 1], "relu", 1.0, 0.0)
 }
 AVAILABLE_ACTIVATIONS = ["relu", "sigmoid", "tanh"]
 AVAILABLE_COLORMAPS = ["viridis", "plasma", "magma", "cividis", "inferno", "Greys", "Blues", "GnBu", "coolwarm"]
@@ -31,19 +31,38 @@ MAX_HIDDEN_LAYERS_COUNT = 3 # Max number of hidden layers
 MIN_NODE_COUNT_PER_LAYER = 1
 MAX_NODE_COUNT_PER_LAYER = 32 # Reduced for sanity, was 64
 
+# Constraints for architecture randomization
+MIN_RANDOM_LAYERS = 1
+MAX_RANDOM_LAYERS = 4
+MIN_RANDOM_NODES = 2
+MAX_RANDOM_NODES = 10
+
 
 def state_to_hex_colors(state_grid):
-    """Converts the NCA state grid (floats 0-1) to hex color strings."""
+    """Converts the NCA state grid (floats 0-1) to hex color strings using vectorized operations."""
     global colormap_func
+    
+    # Ensure state_grid is a numpy array for colormap_func
+    if torch.is_tensor(state_grid):
+        state_grid_np = state_grid.cpu().detach().numpy()
+    else:
+        state_grid_np = state_grid
+
+    # Normalize values to [0, 1] and apply colormap
+    normalized_grid = np.clip(state_grid_np, 0., 1.)
+    rgba_colors = colormap_func(normalized_grid) # This returns (H, W, 4) array of floats
+
+    # Convert RGBA floats (0-1) to byte integers (0-255)
+    byte_colors = (rgba_colors[:, :, :3] * 255).astype(np.uint8) # Take only RGB channels
+
+    # Format to hex strings. This part still involves iteration, but it's on pre-processed data.
+    # A more advanced approach might involve a custom C/Cython extension or WebGL for frontend rendering.
+    # For now, this is a significant improvement over per-pixel colormap application.
     hex_colors = []
-    for r in range(state_grid.shape[0]):
+    for r in range(byte_colors.shape[0]):
         row_colors = []
-        for c in range(state_grid.shape[1]):
-            val = max(0., min(state_grid[r, c], 1.))
-            rgba = colormap_func(val)
-            r_byte = int(rgba[0] * 255)
-            g_byte = int(rgba[1] * 255)
-            b_byte = int(rgba[2] * 255)
+        for c in range(byte_colors.shape[1]):
+            r_byte, g_byte, b_byte = byte_colors[r, c]
             row_colors.append(f"#{r_byte:02x}{g_byte:02x}{b_byte:02x}")
         hex_colors.append(row_colors)
     return hex_colors
@@ -93,7 +112,7 @@ def initialize_nca(params):
     # nca.paused = True # NCA starts paused by default in its __init__
 
 # Initialize with a default preset on startup
-initial_preset_name = "Flicker"
+initial_preset_name = "Linear"
 initial_seed, initial_layers, initial_act, initial_w, initial_b = PRESETS[initial_preset_name]
 initial_params_for_setup = {
     "grid_size": NCA_GRID_SIZE,
@@ -166,13 +185,6 @@ def apply_settings():
 
     data = request.json
     
-    colormap_name = data.get("colormap_name")
-    if colormap_name:
-        if colormap_name not in AVAILABLE_COLORMAPS:
-            return jsonify({"error": f"Invalid colormap name: {colormap_name}"}), 400
-        current_colormap_name = colormap_name
-        colormap_func = get_cmap(current_colormap_name)
-
     preset_name = data.get("preset_name")
     current_nca_params = nca.get_current_params()
     
@@ -225,10 +237,37 @@ def apply_settings():
         "is_paused": nca.paused
     })
 
+@app.route('/api/set_colormap', methods=['POST'])
+def set_colormap_route():
+    global nca, current_colormap_name, colormap_func
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    data = request.json
+    colormap_name = data.get("colormap_name")
+
+    if not colormap_name:
+        return jsonify({"error": "Colormap name is required"}), 400
+    
+    if colormap_name not in AVAILABLE_COLORMAPS:
+        return jsonify({"error": f"Invalid colormap name: {colormap_name}"}), 400
+    
+    current_colormap_name = colormap_name
+    colormap_func = get_cmap(current_colormap_name)
+
+    return jsonify({
+        "message": f"Colormap set to {current_colormap_name}.",
+        "grid_colors": state_to_hex_colors(nca.state)
+    })
+
 @app.route('/api/randomize_weights', methods=['POST'])
 def randomize_weights_route():
     global nca
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+    
+    # Store current state and pause status
+    current_state = nca.state.cpu().clone()
+    was_paused = nca.paused
+    
     data = request.json
     try:
         current_mlp_params = nca.mlp
@@ -246,10 +285,22 @@ def randomize_weights_route():
         weight_scale = float(data.get("weight_scale", current_mlp_params.weight_scale))
         bias = float(data.get("bias", current_mlp_params.bias_value))
 
-        nca.randomize_weights(layer_sizes, activation, weight_scale, bias) # New seed generated internally
+        # Reinitialize NCA with new weights but preserve the grid state
+        # This will also reset history, which is desired as the network changed
+        nca = NeuralCellularAutomaton(
+            grid_size=nca.grid_size,
+            layer_sizes=layer_sizes,
+            activation=activation,
+            weight_scale=weight_scale,
+            bias=bias,
+            random_seed=None, # Generate new random weights
+            initial_state=current_state # Reinitialize with the last frame
+        )
+        nca.paused = was_paused # Restore original pause state
 
         return jsonify({
             "message": "NCA weights randomized.",
+            "grid_colors": state_to_hex_colors(nca.state), # Send updated grid colors
             "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
             "current_params": nca.get_current_params(),
             "is_paused": nca.paused
@@ -278,6 +329,98 @@ def randomize_grid_route():
         "is_paused": nca.paused
     })
 
+@app.route('/api/randomize_architecture', methods=['POST'])
+def randomize_architecture_route():
+    global nca
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    data = request.json
+    was_running = data.get("was_running", False) # Get the running state from frontend
+
+    try:
+        num_hidden_layers = np.random.randint(MIN_RANDOM_LAYERS, MAX_RANDOM_LAYERS + 1)
+        new_layer_sizes = [9] # Input layer
+        for _ in range(num_hidden_layers):
+            new_layer_sizes.append(np.random.randint(MIN_RANDOM_NODES, MAX_RANDOM_NODES + 1))
+        new_layer_sizes.append(1) # Output layer
+
+        # Select a random activation function
+        new_activation = np.random.choice(AVAILABLE_ACTIVATIONS)
+
+        # Randomize weight scale and bias within reasonable bounds
+        new_weight_scale = round(np.random.uniform(0.5, 2.5), 1)
+        new_bias = round(np.random.uniform(-0.5, 0.5), 1)
+
+        # Reinitialize NCA with new architecture and new random weights
+        init_params = {
+            "grid_size": nca.grid_size,
+            "layer_sizes": ",".join(map(str, new_layer_sizes)),
+            "activation": new_activation,
+            "weight_scale": new_weight_scale,
+            "bias": new_bias,
+            "seed": None # Generate new random weights
+        }
+        initialize_nca(init_params) # This resets grid and sets paused to True
+
+        # If it was running before, set it to not paused
+        if was_running:
+            nca.paused = False
+
+        return jsonify({
+            "message": "NCA architecture randomized and reinitialized.",
+            "grid_colors": state_to_hex_colors(nca.state),
+            "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
+            "current_params": nca.get_current_params(),
+            "is_paused": nca.paused
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to randomize architecture: {e}"}), 500
+
+
+@app.route('/api/restart', methods=['POST'])
+def restart_nca():
+    global nca, current_colormap_name, colormap_func
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    # Get current parameters (including MLP architecture and weights)
+    current_params = nca.get_current_params()
+    current_mlp_params = nca.mlp.get_params_for_viz() # Get actual weights for reinitialization
+    current_seed = current_params["initial_seed"] # Store the last used seed for the grid
+
+    # Reinitialize NCA with current MLP parameters and the original grid seed
+    # This creates a new NCA instance but preserves the network's learned state (weights)
+    # and resets the grid to its initial random state based on the original seed.
+    nca = NeuralCellularAutomaton(
+        grid_size=current_params["grid_size"],
+        layer_sizes=current_params["layer_sizes"], # Use current layer sizes
+        activation=current_params["activation"], # Use current activation
+        weight_scale=current_params["weight_scale"], # Use current weight scale
+        bias=current_params["bias"], # Use current bias
+        random_seed=current_seed # Use the original grid seed
+    )
+    # Manually set MLP weights to the current weights, as NeuralCellularAutomaton.__init__
+    # will create a new MLP with random weights based on the seed.
+    # We need to iterate through layers and set weights.
+    for i, layer_weights in enumerate(current_mlp_params["weights"]):
+        # PyTorch weights are (out_dim, in_dim), so we need to transpose back
+        transposed_weights = torch.tensor(layer_weights, dtype=torch.float32).T.to(DEVICE)
+        with torch.no_grad():
+            nca.mlp.layers[i].weight.copy_(transposed_weights)
+            # Assuming bias is also part of current_mlp_params if needed, or handled by init
+            # For now, bias is initialized by MLP and not explicitly passed in get_params_for_viz
+            # If bias needs to be preserved, it should be added to get_params_for_viz and handled here.
+
+    nca.paused = False # Ensure it starts running after restart
+    nca.history.clear() # Clear history as grid is reset
+
+    return jsonify({
+        "message": "NCA reinitialized and restarted from last seed with current weights.",
+        "initial_grid_colors": state_to_hex_colors(nca.state),
+        "mlp_params_for_viz": nca.mlp.get_params_for_viz(), # Send updated weights for viz
+        "current_params": nca.get_current_params(),
+        "is_paused": nca.paused # Should be False now
+    })
+
 @app.route('/api/neuron_weights', methods=['GET', 'POST'])
 def neuron_weights_route():
     global nca
@@ -301,10 +444,10 @@ def neuron_weights_route():
 
             # Handle "All Neurons" case
             if data['neuron_idx'] == 'all':
-                num_neurons_in_layer = nca.mlp.W[layer_idx].shape[1]
+                num_neurons_in_layer = nca.mlp.layers[layer_idx].weight.shape[0] # out_dim
                 for i in range(num_neurons_in_layer):
                     # Ensure the pattern matches the expected input size for this layer
-                    expected_input_size = nca.mlp.W[layer_idx].shape[0]
+                    expected_input_size = nca.mlp.layers[layer_idx].weight.shape[1] # in_dim
                     if len(new_weights_pattern) != expected_input_size:
                         return jsonify({"error": f"Weight pattern length mismatch for layer {layer_idx+1}. Expected {expected_input_size}, got {len(new_weights_pattern)}."}),400
                     nca.mlp.set_incoming_weights_for_neuron(layer_idx, i, new_weights_pattern)
