@@ -569,14 +569,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateManualWeightNeuronSelector() {
         manualWeightNeuronSelector.innerHTML = '<option value="">- Select Neuron -</option>';
+        manualWeightPresetSelector.innerHTML = '<option value="">- Select Preset -</option>'; // Clear and add default
         const selectedLayerDisplayIdx = parseInt(manualWeightLayerSelector.value); // 1-indexed from UI
 
         if (isNaN(selectedLayerDisplayIdx) || !mlpParamsForViz) return;
         
-        // Example: layer_sizes = [9, 8, 16, 1].
-        // UI Layer 1 (Hidden) -> mlpParamsForViz.layer_sizes[1] = 8 neurons
-        // UI Layer 2 (Hidden) -> mlpParamsForViz.layer_sizes[2] = 16 neurons
-        // UI Layer 3 (Output) -> mlpParamsForViz.layer_sizes[3] = 1 neuron
         const numNeuronsInSelectedLayer = mlpParamsForViz.layer_sizes[selectedLayerDisplayIdx];
 
         if (numNeuronsInSelectedLayer > 0) {
@@ -585,6 +582,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 manualWeightNeuronSelector.add(new Option(`Neuron ${i + 1}`, i)); // 0-indexed value
             }
         }
+
+        // Add neuron-level presets
+        manualWeightPresetSelector.add(new Option("Zeros", "zeros"));
+        manualWeightPresetSelector.add(new Option("Ones", "ones"));
+        manualWeightPresetSelector.add(new Option("Random Small", "random_small"));
+
+        // Add 3x3 specific presets if the input layer (previous layer) has 9 neurons
+        const prevLayerSize = mlpParamsForViz.layer_sizes[selectedLayerDisplayIdx - 1];
+        if (prevLayerSize === 9) {
+            manualWeightPresetSelector.add(new Option("Identity (3x3)", "identity"));
+            manualWeightPresetSelector.add(new Option("Edge Detect (3x3)", "edge_detect"));
+            manualWeightPresetSelector.add(new Option("Sharpen (3x3)", "sharpen"));
+            manualWeightPresetSelector.add(new Option("Gaussian Blur (3x3)", "gaussian_blur"));
+        }
+
+        // Add layer-level presets
+        manualWeightPresetSelector.add(new Option("Random Layer", "random_layer"));
+        manualWeightPresetSelector.add(new Option("Zeros Layer", "zeros_layer"));
+        manualWeightPresetSelector.add(new Option("Ones Layer", "ones_layer"));
     }
     
     manualWeightNeuronSelector.addEventListener('change', async () => {
@@ -685,20 +701,27 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = 0; i < numWeights; i++) {
                 pattern[i] = parseFloat((Math.random() * 0.2 - 0.1).toFixed(3)); // Small random values ~[-0.1, 0.1]
             }
-        } else if (numWeights === 9) { // 3x3 specific patterns
-            // Assuming weights map to a 3x3 grid (row by row)
-            //  0 1 2
-            //  3 4 5
-            //  6 7 8
-            if (patternName === "center_on") pattern = [0,0,0, 0,1,0, 0,0,0];
-            else if (patternName === "vertical_lines") pattern = [0,1,0, 0,1,0, 0,1,0];
-            else if (patternName === "horizontal_lines") pattern = [0,0,0, 1,1,1, 0,0,0];
-            else if (patternName === "diag_tl_br") pattern = [1,0,0, 0,1,0, 0,0,1];
-            else if (patternName === "diag_tr_bl") pattern = [0,0,1, 0,1,0, 1,0,0];
+        } else if (patternName === "identity") {
+            // Identity-like: 1.0 at center, 0.0 elsewhere (for 3x3 input)
+            if (numWeights === 9) pattern = [0,0,0, 0,1,0, 0,0,0];
+            else console.warn(`Preset 'identity' is best for 9 inputs. Using random_small.`);
+        } else if (patternName === "edge_detect") {
+            // Edge detection (simple horizontal)
+            if (numWeights === 9) pattern = [-1,-1,-1, 0,0,0, 1,1,1];
+            else console.warn(`Preset 'edge_detect' is best for 9 inputs. Using random_small.`);
+        } else if (patternName === "sharpen") {
+            // Sharpen (for 3x3 input)
+            if (numWeights === 9) pattern = [0,-1,0, -1,5,-1, 0,-1,0];
+            else console.warn(`Preset 'sharpen' is best for 9 inputs. Using random_small.`);
+        } else if (patternName === "gaussian_blur") {
+            // Gaussian Blur (for 3x3 input)
+            if (numWeights === 9) pattern = [0.0625,0.125,0.0625, 0.125,0.25,0.125, 0.0625,0.125,0.0625];
+            else console.warn(`Preset 'gaussian_blur' is best for 9 inputs. Using random_small.`);
         } else {
-            // For other numWeights, presets might not map well visually, just use random/zeros/ones
-            console.warn(`Preset ${patternName} is not specifically designed for ${numWeights} inputs. Using default or simpler pattern.`);
-            if (patternName.includes("3x3")) return null; // Don't apply 3x3 specific to non-9 inputs
+            console.warn(`Preset ${patternName} not found or not applicable for ${numWeights} inputs. Using random_small.`);
+            for (let i = 0; i < numWeights; i++) {
+                pattern[i] = parseFloat((Math.random() * 0.2 - 0.1).toFixed(3)); // Fallback to small random
+            }
         }
         return pattern;
     }
@@ -925,8 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         networkCtx.lineWidth = 1;
                          // Re-apply highlight if this is the selected neuron for editing
                         if (selectedNeuronForEditing.layer === layerIdx &&
-                            selectedNeuronForEditing.neuron !== "all" &&
-                            selectedNeuronForEditing.neuron === nodeIdx) {
+                            (selectedNeuronForEditing.neuron === "all" || selectedNeuronForEditing.neuron === nodeIdx)) {
                             networkCtx.strokeStyle = "magenta";
                             networkCtx.lineWidth = 2.5;
                         }
