@@ -146,12 +146,32 @@ class NeuralCellularAutomaton:
     def step(self):
         if not self.paused: # Only step if not paused
             self.history.append(np.copy(self.state))
-            new_state = np.zeros_like(self.state)
-            for r in range(self.grid_size):
-                for c in range(self.grid_size):
-                    neigh = self.get_neighborhood(r, c)
-                    out = self.mlp.forward(neigh)
-                    new_state[r, c] = out[0] if isinstance(out, np.ndarray) and out.ndim > 0 else out
+
+            # Vectorized neighborhood extraction
+            neighborhood_channels = []
+            for dr in [-1, 0, 1]:
+                for dc in [-1, 0, 1]:
+                    # np.roll shifts the array. To get the value of (r+dr, c+dc) at (r,c),
+                    # we need to roll the grid by (-dr, -dc)
+                    shifted_grid = np.roll(self.state, shift=(-dr, -dc), axis=(0, 1))
+                    neighborhood_channels.append(shifted_grid)
+
+            # Stack the 9 grids along a new axis to get a (grid_size, grid_size, 9) array
+            neighborhood_tensor = np.stack(neighborhood_channels, axis=-1)
+
+            # Reshape to (grid_size * grid_size, 9) for batch processing by MLP
+            # Each row is a 9-element neighborhood for a cell
+            batched_neighborhoods = neighborhood_tensor.reshape(-1, 9)
+
+            # Perform a single forward pass for all cells
+            # The MLP's forward method is already designed to handle batch inputs
+            # where x is (batch_size, input_dim)
+            new_state_flat = self.mlp.forward(batched_neighborhoods)
+
+            # Reshape the output back to the original grid shape
+            # The output from MLP is (grid_size * grid_size, 1)
+            new_state = new_state_flat.reshape(self.grid_size, self.grid_size)
+
             self.state = new_state
 
     def step_back(self):
