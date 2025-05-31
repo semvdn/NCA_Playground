@@ -382,27 +382,41 @@ def restart_nca():
     global nca, current_colormap_name, colormap_func
     if nca is None: return jsonify({"error": "NCA not initialized"}), 500
 
-    # Get current parameters and seed to reinitialize with
+    # Get current parameters (including MLP architecture and weights)
     current_params = nca.get_current_params()
-    current_seed = current_params["initial_seed"] # Store the last used seed
+    current_mlp_params = nca.mlp.get_params_for_viz() # Get actual weights for reinitialization
+    current_seed = current_params["initial_seed"] # Store the last used seed for the grid
 
-    # Prepare parameters for reinitialization
-    init_params = {
-        "grid_size": current_params["grid_size"],
-        "layer_sizes": ",".join(map(str, current_params["layer_sizes"])),
-        "activation": current_params["activation"],
-        "weight_scale": current_params["weight_scale"],
-        "bias": current_params["bias"],
-        "seed": current_seed # Use the last seed
-    }
+    # Reinitialize NCA with current MLP parameters and the original grid seed
+    # This creates a new NCA instance but preserves the network's learned state (weights)
+    # and resets the grid to its initial random state based on the original seed.
+    nca = NeuralCellularAutomaton(
+        grid_size=current_params["grid_size"],
+        layer_sizes=current_params["layer_sizes"], # Use current layer sizes
+        activation=current_params["activation"], # Use current activation
+        weight_scale=current_params["weight_scale"], # Use current weight scale
+        bias=current_params["bias"], # Use current bias
+        random_seed=current_seed # Use the original grid seed
+    )
+    # Manually set MLP weights to the current weights, as NeuralCellularAutomaton.__init__
+    # will create a new MLP with random weights based on the seed.
+    # We need to iterate through layers and set weights.
+    for i, layer_weights in enumerate(current_mlp_params["weights"]):
+        # PyTorch weights are (out_dim, in_dim), so we need to transpose back
+        transposed_weights = torch.tensor(layer_weights, dtype=torch.float32).T.to(DEVICE)
+        with torch.no_grad():
+            nca.mlp.layers[i].weight.copy_(transposed_weights)
+            # Assuming bias is also part of current_mlp_params if needed, or handled by init
+            # For now, bias is initialized by MLP and not explicitly passed in get_params_for_viz
+            # If bias needs to be preserved, it should be added to get_params_for_viz and handled here.
 
-    initialize_nca(init_params) # This reinitializes NCA
     nca.paused = False # Ensure it starts running after restart
+    nca.history.clear() # Clear history as grid is reset
 
     return jsonify({
-        "message": "NCA reinitialized and restarted from last seed.",
+        "message": "NCA reinitialized and restarted from last seed with current weights.",
         "initial_grid_colors": state_to_hex_colors(nca.state),
-        "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
+        "mlp_params_for_viz": nca.mlp.get_params_for_viz(), # Send updated weights for viz
         "current_params": nca.get_current_params(),
         "is_paused": nca.paused # Should be False now
     })
