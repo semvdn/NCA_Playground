@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function startRecording() {
         recordedChunks = [];
         const stream = ncaCanvas.captureStream(60); // 60 FPS
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 10_000_000 });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/mp4; codecs=avc1.42001E', videoBitsPerSecond: 20_000_000 });
 
         mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
@@ -140,12 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const blob = new Blob(recordedChunks, { type: 'video/mp4' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
-            a.download = `canvas_video_${timestamp}.webm`;
+            a.download = `canvas_video_${timestamp}.mp4`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
