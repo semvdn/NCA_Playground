@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const randomizeWeightsButton = document.getElementById('randomizeWeightsButton');
     const randomizeGridButton = document.getElementById('randomizeGridButton');
+    const randomizeArchitectureButton = document.getElementById('randomizeArchitectureButton');
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
     const restartButton = document.getElementById('restartButton');
@@ -240,6 +241,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleRunButton.classList.remove('running');
                 if (animationIntervalId) clearInterval(animationIntervalId);
             }
+        }
+    });
+
+    randomizeArchitectureButton.addEventListener('click', async () => {
+        const data = await fetchApi('/api/randomize_architecture', 'POST');
+        if (data) {
+            drawNcaGrid(data.grid_colors);
+            mlpParamsForViz = data.mlp_params_for_viz;
+            updateUiControls(data.current_params, true);
+            buildNetworkViz();
+            updateNetworkLegend();
+            if (selectedCell) updateCellDetails(selectedCell.r, selectedCell.c);
+            if (data.is_paused) {
+                isRunning = false;
+                toggleRunButton.textContent = 'Start';
+                toggleRunButton.classList.remove('running');
+                if (animationIntervalId) clearInterval(animationIntervalId);
+            } else {
+                isRunning = true;
+                toggleRunButton.textContent = 'Stop';
+                toggleRunButton.classList.add('running');
+                startAnimationLoop();
+            }
+            applyManualWeightsButton.disabled = true;
+            populateManualWeightLayerSelector();
+            resetManualWeightEditorUI();
         }
     });
 

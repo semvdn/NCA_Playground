@@ -31,6 +31,12 @@ MAX_HIDDEN_LAYERS_COUNT = 3 # Max number of hidden layers
 MIN_NODE_COUNT_PER_LAYER = 1
 MAX_NODE_COUNT_PER_LAYER = 32 # Reduced for sanity, was 64
 
+# Constraints for architecture randomization
+MIN_RANDOM_LAYERS = 1
+MAX_RANDOM_LAYERS = 4
+MIN_RANDOM_NODES = 2
+MAX_RANDOM_NODES = 10
+
 
 def state_to_hex_colors(state_grid):
     """Converts the NCA state grid (floats 0-1) to hex color strings."""
@@ -292,6 +298,47 @@ def randomize_grid_route():
         "grid_colors": state_to_hex_colors(nca.state),
         "is_paused": nca.paused
     })
+
+@app.route('/api/randomize_architecture', methods=['POST'])
+def randomize_architecture_route():
+    global nca
+    if nca is None: return jsonify({"error": "NCA not initialized"}), 500
+
+    try:
+        num_hidden_layers = np.random.randint(MIN_RANDOM_LAYERS, MAX_RANDOM_LAYERS + 1)
+        new_layer_sizes = [9] # Input layer
+        for _ in range(num_hidden_layers):
+            new_layer_sizes.append(np.random.randint(MIN_RANDOM_NODES, MAX_RANDOM_NODES + 1))
+        new_layer_sizes.append(1) # Output layer
+
+        # Select a random activation function
+        new_activation = np.random.choice(AVAILABLE_ACTIVATIONS)
+
+        # Randomize weight scale and bias within reasonable bounds
+        new_weight_scale = round(np.random.uniform(0.5, 2.5), 1)
+        new_bias = round(np.random.uniform(-0.5, 0.5), 1)
+
+        # Reinitialize NCA with new architecture and new random weights
+        init_params = {
+            "grid_size": nca.grid_size,
+            "layer_sizes": ",".join(map(str, new_layer_sizes)),
+            "activation": new_activation,
+            "weight_scale": new_weight_scale,
+            "bias": new_bias,
+            "seed": None # Generate new random weights
+        }
+        initialize_nca(init_params) # This resets grid and sets paused to True
+
+        return jsonify({
+            "message": "NCA architecture randomized and reinitialized.",
+            "grid_colors": state_to_hex_colors(nca.state),
+            "mlp_params_for_viz": nca.mlp.get_params_for_viz(),
+            "current_params": nca.get_current_params(),
+            "is_paused": nca.paused
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to randomize architecture: {e}"}), 500
+
 
 @app.route('/api/restart', methods=['POST'])
 def restart_nca():
