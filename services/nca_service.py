@@ -336,3 +336,26 @@ class NCAService:
             "neighborhood": neighborhood_grid,
             "layer_activations": layer_activations
         }
+
+    def set_nca_grid_state(self, grid_state_data, was_running):
+        if self.nca is None:
+            raise Exception("NCA not initialized")
+        
+        try:
+            # Convert list of lists to a PyTorch tensor
+            new_grid_state = torch.tensor(grid_state_data, dtype=torch.float32).to(DEVICE)
+            # Ensure the grid state has the correct shape (grid_size, grid_size)
+            if new_grid_state.shape[0] != self.nca.grid_size or new_grid_state.shape[1] != self.nca.grid_size:
+                raise ValueError(f"Provided grid state dimensions ({new_grid_state.shape[0]}x{new_grid_state.shape[1]}) do not match current NCA grid size ({self.nca.grid_size}x{self.nca.grid_size}).")
+            
+            self.nca.state = new_grid_state.unsqueeze(0).unsqueeze(0) # Add batch and channel dimensions
+            self.nca.history.clear() # Clear history as grid state has been manually set
+            self.nca.paused = not was_running # Set pause state based on whether it was running
+            
+            return {
+                "message": "Grid state updated successfully.",
+                "grid_colors": state_to_hex_colors(self.nca.state, self.current_colormap_name),
+                "is_paused": self.nca.paused
+            }
+        except Exception as e:
+            raise ValueError(f"Error setting grid state: {e}")

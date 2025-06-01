@@ -31,6 +31,8 @@ export const randomizeGridButton = document.getElementById('randomizeGridButton'
 export const randomizeArchitectureButton = document.getElementById('randomizeArchitectureButton');
 export const speedSlider = document.getElementById('speedSlider');
 export const speedValue = document.getElementById('speedValue');
+export const presetGridPatternSelector = document.getElementById('presetGridPatternSelector');
+export const applyPresetGridPatternButton = document.getElementById('applyPresetGridPatternButton');
 export const restartButton = document.getElementById('restartButton');
 
 // Manual Weight Editor Elements

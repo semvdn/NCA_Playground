@@ -12,9 +12,20 @@ def state_to_hex_colors(state_grid, colormap_name="viridis"):
     
     # Ensure state_grid is a numpy array for colormap_func
     if torch.is_tensor(state_grid):
-        state_grid_np = state_grid.cpu().detach().numpy()
-    else:
-        state_grid_np = state_grid
+        # Squeeze out batch and channel dimensions if they exist
+        if state_grid.dim() == 4 and state_grid.shape[0] == 1 and state_grid.shape[1] == 1:
+            state_grid_np = state_grid.squeeze(0).squeeze(0).cpu().detach().numpy()
+        elif state_grid.dim() == 2: # Already 2D (H, W)
+            state_grid_np = state_grid.cpu().detach().numpy()
+        else:
+            raise ValueError(f"Unsupported state_grid dimensions: {state_grid.shape}")
+    else: # Assume it's already a numpy array, check dimensions
+        if state_grid.ndim == 4 and state_grid.shape[0] == 1 and state_grid.shape[1] == 1:
+            state_grid_np = state_grid.squeeze(0).squeeze(0)
+        elif state_grid.ndim == 2:
+            state_grid_np = state_grid
+        else:
+            raise ValueError(f"Unsupported state_grid dimensions: {state_grid.shape}")
 
     # Normalize values to [0, 1] and apply colormap
     normalized_grid = np.clip(state_grid_np, 0., 1.)
@@ -30,7 +41,7 @@ def state_to_hex_colors(state_grid, colormap_name="viridis"):
     for r in range(byte_colors.shape[0]):
         row_colors = []
         for c in range(byte_colors.shape[1]):
-            r_byte, g_byte, b_byte = byte_colors[r, c]
+            r_byte, g_byte, b_byte = int(byte_colors[r, c, 0]), int(byte_colors[r, c, 1]), int(byte_colors[r, c, 2])
             row_colors.append(f"#{r_byte:02x}{g_byte:02x}{b_byte:02x}")
         hex_colors.append(row_colors)
     return hex_colors

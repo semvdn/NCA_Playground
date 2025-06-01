@@ -40,6 +40,14 @@
                             <button id="randomizeWeightsButton" title="Randomize all network weights based on current general config (keeps grid).">Randomize Weights</button>
                             <button id="randomizeArchitectureButton" title="Randomize network layers and nodes, then generate new weights.">Randomize Architecture</button>
                         </div>
+                        <div class="control-section">
+                            <h3>Preset Grid Initialization</h3>
+                            <label for="presetGridPatternSelector" title="Select a predefined pattern to initialize the grid.">Select Pattern:</label>
+                            <select id="presetGridPatternSelector">
+                                <option value="">- Select Pattern -</option>
+                            </select>
+                            <button id="applyPresetGridPatternButton" title="Clear the current grid and apply the selected pattern.">Apply Pattern</button>
+                        </div>
                     </div>
                 </div>
 

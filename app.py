@@ -137,5 +137,18 @@ def get_cell_details():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/set_grid_state', methods=['POST'])
+def set_grid_state_route():
+    data = request.json
+    grid_state_data = data.get('grid_state')
+    was_running = data.get('was_running', False)
+    try:
+        result = nca_service.set_nca_grid_state(grid_state_data, was_running)
+        return jsonify(result)
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": f"Invalid grid state data: {e}"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

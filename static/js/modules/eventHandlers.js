@@ -5,7 +5,8 @@ import {
     randomizeArchitectureButton, restartButton, randomizeWeightsButton,
     captureScreenshotButton, toggleRecordingButton,
     activationSelector, weightScaleSlider, biasSlider, colormapSelector, presetSelector,
-    speedSlider, speedValue, clearSelectionButton
+    speedSlider, speedValue, clearSelectionButton,
+    presetGridPatternSelector, applyPresetGridPatternButton
 } from './domElements.js';
 import { state, setIsRunning, setMlpParamsForViz, setHiddenLayerSizes, setMaxHiddenLayersCount, setMinNodeCountPerLayer, setMaxNodeCountPerLayer, setCurrentFPS } from './state.js';
 import { fetchApi } from './api.js';
@@ -15,6 +16,7 @@ import { buildNetworkViz } from './networkVisualizer.js';
 import { startRecording, stopRecording } from './recordingManager.js';
 import { resetManualWeightEditorUI } from './manualWeightEditor.js';
 import { renderLayerBuilder } from './layerBuilder.js'; // Needed for initial render
+import { gridPresets } from './gridPresets.js';
 
 let animationIntervalId = null;
 
@@ -96,6 +98,14 @@ export async function loadInitialConfig() {
 
 
 export function setupGlobalEventListeners() {
+    // Populate preset grid patterns
+    for (const key in gridPresets) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = gridPresets[key].name;
+        presetGridPatternSelector.appendChild(option);
+    }
+
     captureScreenshotButton.addEventListener('click', () => {
         const dataURL = ncaCanvas.toDataURL('image/png');
         const a = document.createElement('a');
@@ -266,4 +276,46 @@ export function setupGlobalEventListeners() {
     setCurrentFPS(parseInt(speedSlider.value));
 
     clearSelectionButton.addEventListener('click', clearCellDetailsDisplay);
+
+    applyPresetGridPatternButton.addEventListener('click', async () => {
+        const selectedPatternKey = presetGridPatternSelector.value;
+        if (!selectedPatternKey) {
+            alert("Please select a grid pattern to apply.");
+            return;
+        }
+
+        const pattern = gridPresets[selectedPatternKey];
+        if (!pattern) {
+            console.error(`Pattern '${selectedPatternKey}' not found.`);
+            return;
+        }
+
+        const newGrid = pattern.pattern(state.gridSize, state.gridSize); // Assuming square grid
+        const wasRunning = state.isRunning;
+
+        try {
+            const data = await fetchApi('/api/set_grid_state', 'POST', {
+                grid_state: newGrid,
+                was_running: wasRunning
+            });
+            if (data) {
+                drawNcaGrid(data.grid_colors);
+                if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+                if (data.is_paused) {
+                    setIsRunning(false);
+                    toggleRunButton.textContent = 'Start';
+                    toggleRunButton.classList.remove('running');
+                    if (state.animationIntervalId) clearInterval(state.animationIntervalId);
+                } else {
+                    setIsRunning(true);
+                    toggleRunButton.textContent = 'Stop';
+                    toggleRunButton.classList.add('running');
+                    startAnimationLoop();
+                }
+            }
+        } catch (error) {
+            console.error('Error applying preset grid pattern:', error);
+            alert('Failed to apply grid pattern. See console for details.');
+        }
+    });
 }
