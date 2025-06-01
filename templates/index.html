@@ -27,9 +27,9 @@
                             <button id="stepBackButton" title="Revert to the previous grid state (if available)">Step Back</button>
                             <button id="restartButton" title="Reinitialize and start the canvas from the last seed.">Restart</button>
                             <br>
-                            <label for="speedSlider" title="Control the simulation speed (delay between steps in milliseconds).">Speed (ms delay):</label>
-                            <input type="range" id="speedSlider" min="50" max="1000" step="50" value="200">
-                            <span id="speedValue">200</span>
+                            <label for="speedSlider" title="Control the simulation speed (frames per second).">Speed (FPS):</label>
+                            <input type="range" id="speedSlider" min="1" max="30" step="1" value="10">
+                            <span id="speedValue">10</span>
                             <br>
                             <label for="colormapSelector" title="Choose the color scheme for visualizing cell states.">Colormap:</label>
                             <select id="colormapSelector"></select>

@@ -7,7 +7,7 @@ import {
     activationSelector, weightScaleSlider, biasSlider, colormapSelector, presetSelector,
     speedSlider, speedValue, clearSelectionButton
 } from './domElements.js';
-import { state, setIsRunning, setMlpParamsForViz, setHiddenLayerSizes, setMaxHiddenLayersCount, setMinNodeCountPerLayer, setMaxNodeCountPerLayer, setCurrentSpeed } from './state.js';
+import { state, setIsRunning, setMlpParamsForViz, setHiddenLayerSizes, setMaxHiddenLayersCount, setMinNodeCountPerLayer, setMaxNodeCountPerLayer, setCurrentFPS } from './state.js';
 import { fetchApi } from './api.js';
 import { drawNcaGrid } from './ncaCanvasRenderer.js';
 import { updateUiControls, updateNetworkLegend, updateCellDetails, applyGeneralSettings, clearCellDetailsDisplay } from './uiManager.js';
@@ -39,7 +39,7 @@ function startAnimationLoop() {
         if (state.isRunning) {
             await handleStep(false);
         }
-    }, state.currentSpeed);
+    }, 1000 / state.currentFPS); // Convert FPS to milliseconds
     state.animationIntervalId = animationIntervalId; // Store in state
 }
 
@@ -228,11 +228,11 @@ export function setupGlobalEventListeners() {
     });
 
     speedSlider.addEventListener('input', (e) => {
-        setCurrentSpeed(parseInt(e.target.value));
-        speedValue.textContent = state.currentSpeed;
+        setCurrentFPS(parseInt(e.target.value));
+        speedValue.textContent = state.currentFPS;
         if (state.isRunning) startAnimationLoop();
     });
-    setCurrentSpeed(parseInt(speedSlider.value));
+    setCurrentFPS(parseInt(speedSlider.value));
 
     clearSelectionButton.addEventListener('click', clearCellDetailsDisplay);
 }

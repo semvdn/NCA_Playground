@@ -5,7 +5,7 @@ export const state = {
     gridSize: 50,
     isRunning: false,
     animationIntervalId: null,
-    currentSpeed: 200,
+    currentFPS: 10,
     mediaRecorder: null,
     recordedChunks: [],
     isRecording: false,
@@ -38,8 +38,8 @@ export function setAnimationIntervalId(id) {
     state.animationIntervalId = id;
 }
 
-export function setCurrentSpeed(speed) {
-    state.currentSpeed = speed;
+export function setCurrentFPS(fps) {
+    state.currentFPS = fps;
 }
 
 export function setMediaRecorder(recorder) {
