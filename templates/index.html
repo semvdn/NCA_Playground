@@ -27,9 +27,9 @@
                             <button id="stepBackButton" title="Revert to the previous grid state (if available)">Step Back</button>
                             <button id="restartButton" title="Reinitialize and start the canvas from the last seed.">Restart</button>
                             <br>
-                            <label for="speedSlider" title="Control the simulation speed (delay between steps in milliseconds).">Speed (ms delay):</label>
-                            <input type="range" id="speedSlider" min="50" max="1000" step="50" value="200">
-                            <span id="speedValue">200</span>
+                            <label for="speedSlider" title="Control the simulation speed (frames per second).">Speed (FPS):</label>
+                            <input type="range" id="speedSlider" min="1" max="30" step="1" value="10">
+                            <span id="speedValue">10</span>
                             <br>
                             <label for="colormapSelector" title="Choose the color scheme for visualizing cell states.">Colormap:</label>
                             <select id="colormapSelector"></select>
@@ -39,6 +39,14 @@
                             <button id="randomizeGridButton" title="Generate a new random grid state (keeps weights).">Randomize Grid</button>
                             <button id="randomizeWeightsButton" title="Randomize all network weights based on current general config (keeps grid).">Randomize Weights</button>
                             <button id="randomizeArchitectureButton" title="Randomize network layers and nodes, then generate new weights.">Randomize Architecture</button>
+                        </div>
+                        <div class="control-section">
+                            <h3>Preset Grid Initialization</h3>
+                            <label for="presetGridPatternSelector" title="Select a predefined pattern to initialize the grid.">Select Pattern:</label>
+                            <select id="presetGridPatternSelector">
+                                <option value="">- Select Pattern -</option>
+                            </select>
+                            <button id="applyPresetGridPatternButton" title="Clear the current grid and apply the selected pattern.">Apply Pattern</button>
                         </div>
                     </div>
                 </div>
@@ -139,6 +147,6 @@
         </div>
     </div>
  
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

@@ -52,12 +52,29 @@ Here are videos demonstrating the Neural Cellular Automata Web UI in action:
 ## Project Structure
 
 *   [`app.py`](app.py): The main Flask application file. It handles web routes, manages the NCA simulation, processes user requests, and serves the frontend.
+*   [`config.py`](config.py): Contains configuration settings for the Flask application and NCA parameters.
 *   [`nca_core.py`](nca_core.py): Contains the core logic for the Neural Cellular Automaton and the Flexible Multi-Layer Perceptron (MLP). This file defines how the NCA steps and how the neural network processes inputs.
+*   [`services/`](services/):
+    *   [`nca_service.py`](services/nca_service.py): Provides a service layer for NCA-related operations, abstracting core logic from the Flask app.
+*   [`utils/`](utils/):
+    *   [`validation.py`](utils/validation.py): Contains utility functions for data validation.
+    *   [`visualization.py`](utils/visualization.py): Contains utility functions for visualization-related tasks, such as colormap generation.
 *   [`templates/`](templates/):
     *   [`index.html`](templates/index.html): The main HTML template for the web user interface.
 *   [`static/`](static/):
     *   [`css/style.css`](static/css/style.css): Contains the CSS styles for the web interface.
-    *   [`js/main.js`](static/js/main.js): Contains the JavaScript logic for the frontend, handling user interactions, rendering the NCA grid and network visualization, and communicating with the Flask backend via API calls.
+    *   [`js/app.js`](static/js/app.js): The main entry point for the frontend JavaScript, responsible for initializing all modules and setting up the application.
+    *   [`js/modules/`](static/js/modules/): Contains modularized JavaScript files, each encapsulating specific functionalities:
+        *   [`api.js`](static/js/modules/api.js): Handles all interactions with the backend API.
+        *   [`state.js`](static/js/modules/state.js): Manages global application state.
+        *   [`domElements.js`](static/js/modules/domElements.js): Centralizes DOM element selections.
+        *   [`ncaCanvasRenderer.js`](static/js/modules/ncaCanvasRenderer.js): Manages drawing and interactions on the NCA grid canvas.
+        *   [`networkVisualizer.js`](static/js/modules/networkVisualizer.js): Handles the rendering and interactions of the neural network visualization.
+        *   [`uiManager.js`](static/js/modules/uiManager.js): Manages general UI updates and interactions.
+        *   [`layerBuilder.js`](static/js/modules/layerBuilder.js): Manages the dynamic hidden layer builder UI.
+        *   [`recordingManager.js`](static/js/modules/recordingManager.js): Handles video recording functionality.
+        *   [`manualWeightEditor.js`](static/js/modules/manualWeightEditor.js): Encapsulates the logic for the manual neuron weight editor.
+        *   [`eventHandlers.js`](static/js/modules/eventHandlers.js): Consolidates primary event listeners for UI interactions.
 *   [`requirements.txt`](requirements.txt): Lists the Python dependencies required to run the application.
 
 ## Setup and Running

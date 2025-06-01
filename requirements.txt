@@ -2,3 +2,5 @@ Flask
 numpy
 matplotlib
 torch
+torchvision
+torchaudio
