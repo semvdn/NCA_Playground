@@ -194,6 +194,37 @@ export function setupGlobalEventListeners() {
         }
     });
 
+    randomizeWeightsButton.addEventListener('click', async () => {
+        const wasRunning = state.isRunning;
+        try {
+            const data = await fetchApi('/api/randomize_weights', 'POST', { was_running: wasRunning });
+            if (data) {
+                drawNcaGrid(data.grid_colors);
+                setMlpParamsForViz(data.mlp_params_for_viz);
+                updateUiControls(data.current_params, true);
+                buildNetworkViz();
+                updateNetworkLegend();
+                if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+                if (data.is_paused) {
+                    setIsRunning(false);
+                    toggleRunButton.textContent = 'Start';
+                    toggleRunButton.classList.remove('running');
+                    if (state.animationIntervalId) clearInterval(state.animationIntervalId);
+                } else {
+                    setIsRunning(true);
+                    toggleRunButton.textContent = 'Stop';
+                    toggleRunButton.classList.add('running');
+                    startAnimationLoop();
+                }
+                applyManualWeightsButton.disabled = true;
+                resetManualWeightEditorUI();
+            }
+        } catch (error) {
+            console.error('Error randomizing weights:', error);
+            // Error handling is already in fetchApi, so just log here if needed.
+        }
+    });
+
     activationSelector.addEventListener('change', applyGeneralSettings);
     weightScaleSlider.addEventListener('input', (e) => {
         state.weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1); // Direct DOM update
