@@ -31,23 +31,31 @@ Neural Cellular Automata are a fascinating class of systems where each cell in a
 
 ## Visual Showcase
 
-Here are some visual examples of the Neural Cellular Automata Web UI in action:
-
-### Videos
-
 Here are videos demonstrating the Neural Cellular Automata Web UI in action:
 
 #### Canvas Simulations
-#### Canvas Simulations
-<div style="display: flex; flex-wrap: wrap; justify-content: space-around;">
-    <video src="assets/canvas_video_1.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
-    <video src="assets/canvas_video_2.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
-    <video src="assets/canvas_video_3.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
-    <video src="assets/canvas_video_4.mp4" controls loop muted style="width: 48%; margin-bottom: 10px;"></video>
-</div>
+
+
+
+https://github.com/user-attachments/assets/193f7d69-e515-4e92-ac71-ed1806af617c
+
+
+
+https://github.com/user-attachments/assets/9955a7e6-54ed-43b2-b862-1cfa6ab4e89e
+
+
+
+https://github.com/user-attachments/assets/9593cd5c-74c5-4153-ba6e-c907327c4107
+
+
+
+https://github.com/user-attachments/assets/3921b359-9f6f-4fb2-a14e-8a36d1ff1c52
+
+
 
 #### Web UI Walkthrough
-<video src="assets/showcase.mp4" controls loop muted style="width: 100%;"></video>
+
+https://youtu.be/euN4uQ0BBNc
 
 ## Project Structure
 
