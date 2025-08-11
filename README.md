@@ -2,6 +2,9 @@
 
 This project provides an interactive web-based interface for exploring Neural Cellular Automata (NCA). It allows users to visualize the evolution of a cellular automaton driven by a small neural network, experiment with different network architectures, activation functions, and weights, and observe their impact on the grid's behavior.
 
+<img width="1042" height="865" alt="screenshot" src="https://github.com/user-attachments/assets/6464c41b-5233-43d5-95a9-44cab8e0f0a9" />
+
+
 ## What are Neural Cellular Automata?
 
 Neural Cellular Automata are a fascinating class of systems where each cell in a grid updates its state based on the states of its immediate neighbors, using a neural network as the update rule. This project implements a basic NCA where each cell's value (a float between 0 and 1) is determined by a Multi-Layer Perceptron (MLP) that takes the 3x3 neighborhood of the cell as input.
