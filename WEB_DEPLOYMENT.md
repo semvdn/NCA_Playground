@@ -1,6 +1,6 @@
 # Browser-native deployment
 
-The NCA playground no longer needs the Flask/PyTorch backend at runtime. The existing UI calls a browser-side compatibility service in `static/js/modules/browserNcaService.js`, so the application is a static site.
+The NCA playground has no application backend. The UI calls a browser-side compatibility service in `static/js/modules/browserNcaService.js`, so the application is a static site.
 
 ## Local development
 
@@ -16,9 +16,9 @@ Python is only being used as a convenient static file server in that example; th
 
 ## GitHub Pages
 
-A Pages workflow is included in `.github/workflows/pages.yml`. It publishes only `index.html` and `static/`, so the repository's large showcase assets and legacy Python files are not added to the Pages artifact.
+A Pages workflow is included in `.github/workflows/pages.yml`. It publishes only `index.html` and `static/`, keeping the Pages artifact focused on the files required by the running application.
 
-After applying the patch and pushing `main`:
+After applying the patches and pushing `main`:
 
 1. Open **Settings → Pages** in the GitHub repository.
 2. Under **Build and deployment → Source**, choose **GitHub Actions**.
