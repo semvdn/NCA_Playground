@@ -33,4 +33,4 @@ See [`LICENSE`](LICENSE).
 
 ## AI Use
 
-Generative AI, primarily OpenAI's GPT 5.3 codex, was used extensively as a development tool throughout this project.
+Generative AI, primarily OpenAI's GPT 5.1-codex-high, was used extensively as a development tool throughout this project.
