@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A browser-native Neural Cellular Automata playground.">
+    <title>Neural Cellular Automata Playground</title>
+    <link rel="stylesheet" href="./static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Neural Cellular Automata Playground</h1>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel" id="leftPanel">
+                <div class="ca-display-container">
+                    <canvas id="ncaCanvas"></canvas>
+                </div>
+                <button class="collapsible active">Simulation Controls</button>
+                <div class="content" style="display: block;">
+                    <div class="controls">
+                        <div class="control-section">
+                            <h3>Simulation Flow</h3>
+                            <button id="toggleRunButton" title="Start or stop the continuous simulation">Start</button>
+                            <button id="stepButton" title="Run a single step of the simulation">Step</button>
+                            <button id="stepBackButton" title="Revert to the previous grid state (if available)">Step Back</button>
+                            <button id="restartButton" title="Reinitialize and start the canvas from the last seed.">Restart</button>
+                            <br>
+                            <label for="speedSlider" title="Control the simulation speed (frames per second).">Speed (FPS):</label>
+                            <input type="range" id="speedSlider" min="1" max="30" step="1" value="10">
+                            <span id="speedValue">10</span>
+                            <br>
+                            <label for="colormapSelector" title="Choose the color scheme for visualizing cell states.">Colormap:</label>
+                            <select id="colormapSelector"></select>
+                        </div>
+                        <div class="control-section">
+                            <h3>Randomizer</h3>
+                            <button id="randomizeGridButton" title="Generate a new random grid state (keeps weights).">Randomize Grid</button>
+                            <button id="randomizeWeightsButton" title="Randomize all network weights based on current general config (keeps grid).">Randomize Weights</button>
+                            <button id="randomizeArchitectureButton" title="Randomize network layers and nodes, then generate new weights.">Randomize Architecture</button>
+                        </div>
+                        <div class="control-section">
+                            <h3>Preset Grid Initialization</h3>
+                            <label for="presetGridPatternSelector" title="Select a predefined pattern to initialize the grid.">Select Pattern:</label>
+                            <select id="presetGridPatternSelector">
+                                <option value="">- Select Pattern -</option>
+                            </select>
+                            <button id="applyPresetGridPatternButton" title="Clear the current grid and apply the selected pattern.">Apply Pattern</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="collapsible active">NCA Architecture</button>
+                <div class="content" style="display: block;">
+                    <div class="controls">
+                        <div class="control-section">
+                            <h3>General Configuration</h3>
+                            <label for="presetSelector" title="Select a predefined set of NCA parameters.">Preset:</label>
+                            <select id="presetSelector"></select>
+                            <label for="activationSelector" title="Select the activation function for hidden layers (ReLU, Sigmoid, Tanh).">Activation:</label>
+                            <select id="activationSelector"></select>
+                            <br>
+                            <label for="weightScaleSlider" title="Adjust the initial magnitude of the neural network's weights.">Weight Scale:</label>
+                            <input type="range" id="weightScaleSlider" min="0.1" max="3.0" step="0.1" value="1.0">
+                            <span id="weightScaleValue">1.0</span>
+                            <label for="biasSlider" title="Adjust the initial bias values in the neural network.">Bias:</label>
+                            <input type="range" id="biasSlider" min="-1.0" max="1.0" step="0.1" value="0.0">
+                            <span id="biasValue">0.0</span>
+                            <br>
+                            <div id="layerBuilderContainer">
+                                <!-- Dynamic layer inputs will be inserted here by JavaScript -->
+                            </div>
+                            <button id="addHiddenLayerButton" title="Add a new hidden layer to the network (max 3).">Add Hidden Layer</button>
+                            <button id="removeHiddenLayerButton" title="Remove the last added hidden layer.">Remove Last Hidden Layer</button>
+                            <br>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="collapsible">Manual Neuron Weight Editor</button>
+                <div class="content">
+                    <div class="controls">
+                        <div class="control-section" id="manualWeightEditorSection">
+                            <h3>Edit Incoming Weights for a Neuron</h3>
+                            <label for="manualWeightLayerSelector">Target Layer:</label>
+                            <select id="manualWeightLayerSelector"></select>
+                            <label for="manualWeightNeuronSelector">Target Neuron:</label>
+                            <select id="manualWeightNeuronSelector"></select>
+                            <br>
+                            <label for="manualWeightPresetSelector">Load Preset Pattern:</label>
+                            <select id="manualWeightPresetSelector">
+                                <option value="">- Select Pattern -</option>
+                                <option value="zeros">Zeros</option>
+                                <option value="ones">Ones</option>
+                                <option value="random_small">Random Small</option>
+                                <option value="center_on">Center On (3x3)</option>
+                                <option value="vertical_lines">Vertical Lines (3x3)</option>
+                                <option value="horizontal_lines">Horizontal Lines (3x3)</option>
+                                <option value="diag_tl_br">Diagonal TL-BR (3x3)</option>
+                                <option value="diag_tr_bl">Diagonal TR-BL (3x3)</option>
+                            </select>
+                            <div id="manualWeightInputContainerTitle" style="margin-top:10px; font-weight:bold;"></div>
+                            <div id="manualWeightInputContainer">
+                                <!-- Weight inputs will be dynamically generated here -->
+                            </div>
+                            <button id="applyManualWeightsButton" title="Apply the specified weights to the selected neuron(s)." disabled>Apply Manual Weights</button>
+                            <p class="info-text" id="manualWeightInfoText">Select a layer and neuron to edit its incoming weights. For 'All Neurons', only preset patterns can be applied.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <button class="collapsible">Capture Tools</button>
+                <div class="content">
+                    <div class="controls">
+                        <div class="control-section">
+                            <button id="captureScreenshotButton" title="Capture the current canvas content as an image.">Capture Screenshot</button>
+                            <button id="toggleRecordingButton" title="Start or stop recording the canvas content as a video.">Start Recording Video</button>
+                            <span id="recordingTimer" style="display: none;">00:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="collapsible active">Under the Hood</button>
+                <div class="content" style="display: block;">
+                    <h2>Cell &amp; Network Inspector</h2>
+                    <div id="cellInfoLabel">Click on a CA cell to see details.</div>
+                    <button id="clearSelectionButton" style="display: none;">Clear Selection</button>
+                    <div class="info-explanation">
+                        <p>The "Neighborhood" shows the 3x3 grid of cell values (input) around the selected cell, including the cell itself. These 9 values are fed into the neural network.</p>
+                    </div>
+                    <pre id="neighborhoodDisplay"></pre>
+                    <div class="info-explanation">
+                        <p>The "Layer Activations" display the output values of each layer in the neural network when processing the selected cell's neighborhood. This shows how the network transforms the input to produce the next cell state.</p>
+                    </div>
+                    <pre id="activationDisplay"></pre>
+                    <div class="network-viz-container">
+                        <canvas id="networkCanvas"></canvas>
+                        <div id="networkLegend" class="network-legend"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./static/js/app.js"></script>
+</body>
+</html>
