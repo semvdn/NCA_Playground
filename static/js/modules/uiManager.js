@@ -8,6 +8,7 @@ import {
 import { state, setHiddenLayerSizes, setMlpParamsForViz, setSelectedCell, setCurrentLayerActivations } from './state.js';
 import { drawNcaGrid } from './ncaCanvasRenderer.js';
 import { buildNetworkViz, updateNetworkNodeColors } from './networkVisualizer.js';
+import { browserNcaService } from './browserNcaService.js';
 
 export function updateUiControls(params) {
     if (params.layer_sizes) setHiddenLayerSizes(params.layer_sizes.slice(1, -1));
@@ -32,9 +33,15 @@ export function updateNetworkLegend() {
     `;
 }
 
-export async function updateCellDetails(r, c) {
-    const { fetchApi } = await import('./api.js');
-    const data = await fetchApi(`/api/cell_details?r=${r}&c=${c}`);
+export function updateCellDetails(r, c) {
+    let data;
+    try {
+        data = browserNcaService.getCellDetails(r, c);
+    } catch (error) {
+        console.error('NCA service error while inspecting a cell:', error);
+        clearCellDetailsDisplay();
+        return;
+    }
     if (!data) {
         clearCellDetailsDisplay();
         return;
@@ -85,8 +92,7 @@ export function setupCollapsibleSections() {
     }
 }
 
-export async function applyGeneralSettings() {
-    const { fetchApi } = await import('./api.js');
+export function applyGeneralSettings() {
     const finalLayerSizes = [9, ...state.hiddenLayerSizes, 1];
 
     try {
@@ -102,13 +108,20 @@ export async function applyGeneralSettings() {
         return null;
     }
 
-    const data = await fetchApi('/api/apply_settings', 'POST', {
-        preset_name: presetSelector.value,
-        layer_sizes: finalLayerSizes.join(','),
-        activation: activationSelector.value,
-        weight_scale: Number.parseFloat(weightScaleSlider.value),
-        bias: Number.parseFloat(biasSlider.value)
-    });
+    let data;
+    try {
+        data = browserNcaService.applySettings({
+            preset_name: presetSelector.value,
+            layer_sizes: finalLayerSizes.join(','),
+            activation: activationSelector.value,
+            weight_scale: Number.parseFloat(weightScaleSlider.value),
+            bias: Number.parseFloat(biasSlider.value)
+        });
+    } catch (error) {
+        console.error('NCA service error while applying settings:', error);
+        alert(`Error: ${error.message}`);
+        return null;
+    }
 
     if (data) {
         drawNcaGrid(data.grid_colors, data.grid_values);

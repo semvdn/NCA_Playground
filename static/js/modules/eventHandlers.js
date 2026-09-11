@@ -12,7 +12,7 @@ import {
     setMaxHiddenLayersCount, setMinNodeCountPerLayer, setMaxNodeCountPerLayer,
     setCurrentFPS
 } from './state.js';
-import { fetchApi } from './api.js';
+import { browserNcaService } from './browserNcaService.js';
 import { drawNcaGrid } from './ncaCanvasRenderer.js';
 import { updateUiControls, updateNetworkLegend, updateCellDetails, applyGeneralSettings, clearCellDetailsDisplay } from './uiManager.js';
 import { buildNetworkViz } from './networkVisualizer.js';
@@ -20,6 +20,16 @@ import { renderLayerBuilder } from './layerBuilder.js';
 import { gridPresets } from './gridPresets.js';
 
 let animationIntervalId = null;
+
+function callService(description, action) {
+    try {
+        return action();
+    } catch (error) {
+        console.error(`NCA service error while ${description}:`, error);
+        alert(`Error: ${error.message}`);
+        return null;
+    }
+}
 
 function stopAnimationLoop() {
     if (animationIntervalId) clearInterval(animationIntervalId);
@@ -43,9 +53,11 @@ function syncRunState(isPaused) {
     if (typeof isPaused === 'boolean') setRunning(!isPaused);
 }
 
-async function handleStep(isBack = false) {
-    const endpoint = isBack ? '/api/step_back' : '/api/step';
-    const data = await fetchApi(endpoint, 'POST');
+function handleStep(isBack = false) {
+    const data = callService(
+        isBack ? 'stepping backward' : 'stepping the simulation',
+        () => isBack ? browserNcaService.stepBack() : browserNcaService.step()
+    );
     if (!data) return;
 
     drawNcaGrid(data.grid_colors, data.grid_values);
@@ -65,8 +77,8 @@ function useCustomConfiguration() {
     presetSelector.value = 'Custom';
 }
 
-export async function loadInitialConfig() {
-    const config = await fetchApi('/api/config');
+export function loadInitialConfig() {
+    const config = callService('loading the initial configuration', () => browserNcaService.getConfig());
     if (!config) return;
 
     setMaxHiddenLayersCount(config.constraints.max_hidden_layers);
@@ -117,24 +129,27 @@ export function setupGlobalEventListeners() {
         anchor.remove();
     });
 
-    toggleRunButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/toggle_pause', 'POST');
+    toggleRunButton.addEventListener('click', () => {
+        const data = callService('toggling simulation playback', () => browserNcaService.togglePause());
         if (data) syncRunState(data.is_paused);
     });
 
     stepButton.addEventListener('click', () => handleStep(false));
     stepBackButton.addEventListener('click', () => handleStep(true));
 
-    randomizeGridButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
+    randomizeGridButton.addEventListener('click', () => {
+        const data = callService('randomizing the grid', () => browserNcaService.randomizeGrid({ seed: Date.now() }));
         if (!data) return;
         drawNcaGrid(data.grid_colors, data.grid_values);
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
         syncRunState(data.is_paused);
     });
 
-    randomizeArchitectureButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/randomize_architecture', 'POST', { was_running: state.isRunning });
+    randomizeArchitectureButton.addEventListener('click', () => {
+        const data = callService(
+            'randomizing the architecture',
+            () => browserNcaService.randomizeArchitecture({ was_running: state.isRunning })
+        );
         if (!data) return;
         drawNcaGrid(data.grid_colors, data.grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
@@ -147,8 +162,8 @@ export function setupGlobalEventListeners() {
         syncRunState(data.is_paused);
     });
 
-    restartButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/restart', 'POST');
+    restartButton.addEventListener('click', () => {
+        const data = callService('restarting the simulation', () => browserNcaService.restart());
         if (!data) return;
         drawNcaGrid(data.initial_grid_colors, data.initial_grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
@@ -160,8 +175,8 @@ export function setupGlobalEventListeners() {
         syncRunState(data.is_paused);
     });
 
-    randomizeWeightsButton.addEventListener('click', async () => {
-        const data = await fetchApi('/api/randomize_weights', 'POST');
+    randomizeWeightsButton.addEventListener('click', () => {
+        const data = callService('randomizing network weights', () => browserNcaService.randomizeWeights());
         if (!data) return;
         drawNcaGrid(data.grid_colors, data.grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
@@ -187,22 +202,22 @@ export function setupGlobalEventListeners() {
         applyGeneralSettings();
     });
 
-    colormapSelector.addEventListener('change', async event => {
-        const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: event.target.value });
+    colormapSelector.addEventListener('change', event => {
+        const data = callService('changing the colormap', () => browserNcaService.setColormap(event.target.value));
         if (!data) return;
         drawNcaGrid(data.grid_colors, data.grid_values);
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
     });
 
-    presetSelector.addEventListener('change', async () => {
+    presetSelector.addEventListener('change', () => {
         const selected = presetSelector.value;
         if (selected === 'Custom') return;
-        const config = await fetchApi('/api/config');
+        const config = callService('loading preset configuration', () => browserNcaService.getConfig());
         if (!config?.presets[selected]) return;
         const [, layers, activation, weightScale, bias] = config.presets[selected];
         updateUiControls({ layer_sizes: layers, activation, weight_scale: weightScale, bias });
         renderLayerBuilder();
-        await applyGeneralSettings();
+        applyGeneralSettings();
     });
 
     speedSlider.addEventListener('input', event => {
@@ -214,7 +229,7 @@ export function setupGlobalEventListeners() {
 
     clearSelectionButton.addEventListener('click', clearCellDetailsDisplay);
 
-    applyPresetGridPatternButton.addEventListener('click', async () => {
+    applyPresetGridPatternButton.addEventListener('click', () => {
         const selected = presetGridPatternSelector.value;
         if (!selected) {
             alert('Please select a grid pattern to apply.');
@@ -223,10 +238,13 @@ export function setupGlobalEventListeners() {
         const pattern = gridPresets[selected];
         if (!pattern) return;
 
-        const data = await fetchApi('/api/set_grid_state', 'POST', {
-            grid_state: pattern.pattern(state.gridSize, state.gridSize),
-            was_running: state.isRunning
-        });
+        const data = callService(
+            'applying the grid preset',
+            () => browserNcaService.setGridState({
+                grid_state: pattern.pattern(state.gridSize, state.gridSize),
+                was_running: state.isRunning
+            })
+        );
         if (!data) return;
         drawNcaGrid(data.grid_colors, data.grid_values);
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);

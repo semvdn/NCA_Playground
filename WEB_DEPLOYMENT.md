@@ -1,6 +1,6 @@
 # Browser-native deployment
 
-The NCA playground has no application backend. The UI calls a browser-side compatibility service in `static/js/modules/browserNcaService.js`, so the application is a static site.
+The NCA playground has no application backend. UI modules import `static/js/modules/browserNcaService.js` directly, so the application is a static site with no HTTP API or compatibility transport layer.
 
 ## Local development
 

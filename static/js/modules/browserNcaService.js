@@ -1,7 +1,7 @@
-// Browser-native NCA engine.
+// Browser-native NCA engine and application service.
 //
-// The UI still uses its original API-shaped adapter, but all state and compute live
-// locally in this module so the playground can run as a static GitHub Pages site.
+// This module owns the simulation state and operations used directly by the UI.
+// It has no network or backend dependency.
 
 const PRESETS = {
     'Linear': [null, [9, 1], 'relu', 1.0, 0.0],

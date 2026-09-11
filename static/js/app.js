@@ -15,16 +15,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupGlobalEventListeners();
     setupCollapsibleSections();
 
-    loadInitialConfig().then(() => {
-        const netContainer = document.querySelector('.network-viz-container');
-        if (netContainer) {
-            networkCanvas.width = netContainer.clientWidth;
-            networkCanvas.height = netContainer.clientHeight;
-            buildNetworkViz();
-        }
-        updateNetworkLegend();
-        renderLayerBuilder();
-    });
+    loadInitialConfig();
+    const netContainer = document.querySelector('.network-viz-container');
+    if (netContainer) {
+        networkCanvas.width = netContainer.clientWidth;
+        networkCanvas.height = netContainer.clientHeight;
+        buildNetworkViz();
+    }
+    updateNetworkLegend();
+    renderLayerBuilder();
 
     setupNetworkVizResizeObserver();
 });
