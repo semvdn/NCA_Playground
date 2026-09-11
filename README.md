@@ -57,8 +57,7 @@ The grid wraps at the boundaries, so every cell always has nine inputs. Hidden l
 ├── .github/workflows/pages.yml        # Tests + GitHub Pages deployment
 ├── tests/browserNcaService.test.js    # Engine regression tests
 ├── package.json                       # Dependency-free Node test command
-├── WEB_DEPLOYMENT.md                  # Deployment notes
-└── assets/                            # Showcase media
+└── WEB_DEPLOYMENT.md                  # Deployment notes
 ```
 
 ## Run locally
