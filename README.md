@@ -4,8 +4,7 @@ An interactive, browser-native playground for exploring neural cellular automata
 
 **Live app:** https://semvdn.github.io/NCA_Playground/
 
-
-<img width="1042" height="865" alt="NCA Playground screenshot" src="https://github.com/user-attachments/assets/6464c41b-5233-43d5-95a9-44cab8e0f0a9" />
+<img width="1042" height="807" alt="NCA_README_img" src="https://github.com/user-attachments/assets/2d745bc0-a92d-4daa-b143-78b8993ef31f" />
 
 
 ## What is a neural cellular automaton?
