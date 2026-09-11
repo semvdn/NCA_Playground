@@ -48,7 +48,7 @@ async function handleStep(isBack = false) {
     const data = await fetchApi(endpoint, 'POST');
     if (!data) return;
 
-    drawNcaGrid(data.grid_colors);
+    drawNcaGrid(data.grid_colors, data.grid_values);
     if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
     if (isBack) syncRunState(data.is_paused);
 }
@@ -93,7 +93,7 @@ export async function loadInitialConfig() {
         updateUiControls(config.default_params);
     }
 
-    drawNcaGrid(config.initial_grid_colors);
+    drawNcaGrid(config.initial_grid_colors, config.initial_grid_values);
     buildNetworkViz();
     updateNetworkLegend();
     renderLayerBuilder();
@@ -128,7 +128,7 @@ export function setupGlobalEventListeners() {
     randomizeGridButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
         if (!data) return;
-        drawNcaGrid(data.grid_colors);
+        drawNcaGrid(data.grid_colors, data.grid_values);
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
         syncRunState(data.is_paused);
     });
@@ -136,7 +136,7 @@ export function setupGlobalEventListeners() {
     randomizeArchitectureButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/randomize_architecture', 'POST', { was_running: state.isRunning });
         if (!data) return;
-        drawNcaGrid(data.grid_colors);
+        drawNcaGrid(data.grid_colors, data.grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
         updateUiControls(data.current_params);
         presetSelector.value = 'Custom';
@@ -150,7 +150,7 @@ export function setupGlobalEventListeners() {
     restartButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/restart', 'POST');
         if (!data) return;
-        drawNcaGrid(data.initial_grid_colors);
+        drawNcaGrid(data.initial_grid_colors, data.initial_grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
         updateUiControls(data.current_params);
         renderLayerBuilder();
@@ -163,7 +163,7 @@ export function setupGlobalEventListeners() {
     randomizeWeightsButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/randomize_weights', 'POST');
         if (!data) return;
-        drawNcaGrid(data.grid_colors);
+        drawNcaGrid(data.grid_colors, data.grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
         updateUiControls(data.current_params);
         buildNetworkViz();
@@ -190,7 +190,7 @@ export function setupGlobalEventListeners() {
     colormapSelector.addEventListener('change', async event => {
         const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: event.target.value });
         if (!data) return;
-        drawNcaGrid(data.grid_colors);
+        drawNcaGrid(data.grid_colors, data.grid_values);
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
     });
 
@@ -228,7 +228,7 @@ export function setupGlobalEventListeners() {
             was_running: state.isRunning
         });
         if (!data) return;
-        drawNcaGrid(data.grid_colors);
+        drawNcaGrid(data.grid_colors, data.grid_values);
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
         syncRunState(data.is_paused);
     });

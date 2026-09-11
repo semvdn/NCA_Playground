@@ -41,15 +41,8 @@ export async function updateCellDetails(r, c) {
     }
 
     setSelectedCell(data.selected_cell);
-    let cellValueDisplay = 'N/A';
-    if (state.currentGridColors?.[r]?.[c]) {
-        const hex = state.currentGridColors[r][c].substring(1);
-        const red = Number.parseInt(hex.substring(0, 2), 16) / 255;
-        const green = Number.parseInt(hex.substring(2, 4), 16) / 255;
-        const blue = Number.parseInt(hex.substring(4, 6), 16) / 255;
-        cellValueDisplay = ((red + green + blue) / 3).toFixed(3);
-    }
-    cellInfoLabel.innerHTML = `Selected Cell: (Row=${r}, Col=${c})<br>Approx. Value: ${cellValueDisplay}`;
+    const cellValueDisplay = Number.isFinite(data.cell_value) ? data.cell_value.toFixed(6) : 'N/A';
+    cellInfoLabel.innerHTML = `Selected Cell: (Row=${r}, Col=${c})<br>Value: ${cellValueDisplay}`;
 
     let neighborhoodText = 'Neighborhood (3x3 Input - Row Major):\n';
     data.neighborhood.forEach(row => {
@@ -77,7 +70,7 @@ export function clearCellDetailsDisplay() {
     setSelectedCell(null);
     setCurrentLayerActivations(null);
     clearSelectionButton.style.display = 'none';
-    if (state.currentGridColors) drawNcaGrid(state.currentGridColors);
+    if (state.currentGridColors) drawNcaGrid(state.currentGridColors, state.currentGridValues);
     if (state.mlpParamsForViz) buildNetworkViz();
 }
 
@@ -118,7 +111,7 @@ export async function applyGeneralSettings() {
     });
 
     if (data) {
-        drawNcaGrid(data.grid_colors);
+        drawNcaGrid(data.grid_colors, data.grid_values);
         setMlpParamsForViz(data.mlp_params_for_viz);
         updateUiControls(data.current_params);
         buildNetworkViz();

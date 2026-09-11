@@ -22,12 +22,12 @@ The grid wraps at the boundaries, so every cell always has nine inputs. Hidden l
 
 ## Features
 
-- Start, stop, single-step, restart, and step backward through recent NCA states.
+- Start, stop, single-step, restart from the current initial grid, and step backward through recent NCA states.
 - Change the MLP architecture by adding/removing hidden layers and changing their widths; manual changes automatically switch the preset selector to Custom.
 - Switch activation functions and adjust weight scale and bias.
 - Randomize the grid, weights, or complete architecture.
 - Apply predefined grid patterns.
-- Click any cell to inspect its 3x3 neighborhood and layer activations.
+- Click any cell to inspect its exact scalar value, 3x3 neighborhood, and layer activations.
 - Visualize network topology, activation values, and positive/negative weights.
 - Switch among several colormaps.
 - Capture screenshots and record the simulation canvas to video.

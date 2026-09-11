@@ -1,12 +1,13 @@
 // static/js/modules/ncaCanvasRenderer.js
 
 import { ncaCanvas, ncaCtx, leftPanel, hoverCellInfo } from './domElements.js';
-import { state, setSelectedCell, setCurrentGridColors } from './state.js';
-import { updateCellDetails, clearCellDetailsDisplay } from './uiManager.js'; // Will be created later, but needed for dependency
+import { state, setCurrentGridColors, setCurrentGridValues } from './state.js';
+import { updateCellDetails, clearCellDetailsDisplay } from './uiManager.js';
 
-export function drawNcaGrid(gridColors) {
-    if (!gridColors || gridColors.length === 0) return;
+export function drawNcaGrid(gridColors, gridValues = null) {
+    if (!gridColors?.length) return;
     setCurrentGridColors(gridColors);
+    if (gridValues) setCurrentGridValues(gridValues);
     state.gridSize = gridColors.length;
     ncaCanvas.width = state.gridSize * state.CELL_SIZE;
     ncaCanvas.height = state.gridSize * state.CELL_SIZE;
@@ -18,9 +19,7 @@ export function drawNcaGrid(gridColors) {
         }
     }
 
-    if (state.selectedCell) {
-        highlightNeighborhood(state.selectedCell.r, state.selectedCell.c);
-    }
+    if (state.selectedCell) highlightNeighborhood(state.selectedCell.r, state.selectedCell.c);
     leftPanel.style.width = `${ncaCanvas.width}px`;
 }
 
@@ -38,45 +37,41 @@ export function highlightNeighborhood(r, c) {
     }
 }
 
+function eventToCell(event) {
+    const rect = ncaCanvas.getBoundingClientRect();
+    const canvasX = (event.clientX - rect.left) * (ncaCanvas.width / rect.width);
+    const canvasY = (event.clientY - rect.top) * (ncaCanvas.height / rect.height);
+    return {
+        c: Math.floor(canvasX / state.CELL_SIZE),
+        r: Math.floor(canvasY / state.CELL_SIZE)
+    };
+}
+
 export function setupNcaCanvasEvents() {
     document.body.appendChild(hoverCellInfo);
     hoverCellInfo.style.cssText = `
         position: absolute; background: rgba(0, 0, 0, 0.7); color: white;
         padding: 5px; border-radius: 3px; pointer-events: none; display: none; z-index: 100;`;
 
-    ncaCanvas.addEventListener('click', (event) => {
-        const rect = ncaCanvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const c = Math.floor(x / state.CELL_SIZE);
-        const r = Math.floor(y / state.CELL_SIZE);
+    ncaCanvas.addEventListener('click', event => {
+        const { r, c } = eventToCell(event);
+        if (r < 0 || r >= state.gridSize || c < 0 || c >= state.gridSize) return;
 
-        if (r >= 0 && r < state.gridSize && c >= 0 && c < state.gridSize) {
-            if (state.selectedCell && state.selectedCell.r === r && state.selectedCell.c === c) {
-                clearCellDetailsDisplay();
-            } else {
-                updateCellDetails(r, c);
-                if (state.currentGridColors) drawNcaGrid(state.currentGridColors);
-                highlightNeighborhood(r, c);
-            }
+        if (state.selectedCell?.r === r && state.selectedCell?.c === c) {
+            clearCellDetailsDisplay();
+        } else {
+            updateCellDetails(r, c);
+            if (state.currentGridColors) drawNcaGrid(state.currentGridColors, state.currentGridValues);
+            highlightNeighborhood(r, c);
         }
     });
 
-    ncaCanvas.addEventListener('mousemove', (event) => {
+    ncaCanvas.addEventListener('mousemove', event => {
         if (!state.currentGridColors) return;
-        const rect = ncaCanvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const c = Math.floor(x / state.CELL_SIZE);
-        const r = Math.floor(y / state.CELL_SIZE);
-
+        const { r, c } = eventToCell(event);
         if (r >= 0 && r < state.gridSize && c >= 0 && c < state.gridSize) {
-            const hex = state.currentGridColors[r][c].substring(1);
-            const R = parseInt(hex.substring(0, 2), 16);
-            const G = parseInt(hex.substring(2, 4), 16);
-            const B = parseInt(hex.substring(4, 6), 16);
-            const approxVal = ((R / 255 + G / 255 + B / 255) / 3).toFixed(3);
-            hoverCellInfo.textContent = `(${r},${c}): ${approxVal}`;
+            const value = state.currentGridValues?.[r * state.gridSize + c];
+            hoverCellInfo.textContent = Number.isFinite(value) ? `(${r},${c}): ${value.toFixed(3)}` : `(${r},${c})`;
             hoverCellInfo.style.left = `${event.pageX + 10}px`;
             hoverCellInfo.style.top = `${event.pageY + 10}px`;
             hoverCellInfo.style.display = 'block';
@@ -85,7 +80,5 @@ export function setupNcaCanvasEvents() {
         }
     });
 
-    ncaCanvas.addEventListener('mouseout', () => {
-        hoverCellInfo.style.display = 'none';
-    });
+    ncaCanvas.addEventListener('mouseout', () => { hoverCellInfo.style.display = 'none'; });
 }

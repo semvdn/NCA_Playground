@@ -12,6 +12,7 @@ export const state = {
     recordingStartTime: null,
     recordingTimerInterval: null,
     currentGridColors: null,
+    currentGridValues: null,
     hiddenLayerSizes: [],
     maxHiddenLayersCount: 3,
     minNodeCountPerLayer: 1,
@@ -32,6 +33,7 @@ export function setIsRecording(recording) { state.isRecording = recording; }
 export function setRecordingStartTime(time) { state.recordingStartTime = time; }
 export function setRecordingTimerInterval(interval) { state.recordingTimerInterval = interval; }
 export function setCurrentGridColors(colors) { state.currentGridColors = colors; }
+export function setCurrentGridValues(values) { state.currentGridValues = values; }
 export function setHiddenLayerSizes(sizes) { state.hiddenLayerSizes = sizes; }
 export function setMaxHiddenLayersCount(count) { state.maxHiddenLayersCount = count; }
 export function setMinNodeCountPerLayer(count) { state.minNodeCountPerLayer = count; }
