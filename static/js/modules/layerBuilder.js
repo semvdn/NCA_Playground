@@ -1,8 +1,12 @@
 // static/js/modules/layerBuilder.js
 
 import { layerBuilderContainer, addHiddenLayerButton, removeHiddenLayerButton, presetSelector } from './domElements.js';
-import { state, setHiddenLayerSizes } from './state.js';
+import { state } from './state.js';
 import { applyGeneralSettings } from './uiManager.js';
+
+function useCustomConfiguration() {
+    presetSelector.value = 'Custom';
+}
 
 export function renderLayerBuilder() {
     layerBuilderContainer.innerHTML = '';
@@ -13,33 +17,38 @@ export function renderLayerBuilder() {
         layerDiv.innerHTML = `
             <label for="${inputId}">Hidden Layer ${index + 1} Size:</label>
             <input type="number" id="${inputId}" value="${size}"
-                   min="${state.MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND}" max="${state.MAX_NODE_COUNT_PER_LAYER_FROM_BACKEND}" class="hidden-layer-input">`;
+                   min="${state.minNodeCountPerLayer}" max="${state.maxNodeCountPerLayer}" class="hidden-layer-input">`;
         layerBuilderContainer.appendChild(layerDiv);
-        layerDiv.querySelector(`#${inputId}`).addEventListener('input', (e) => {
-            let value = parseInt(e.target.value);
-            if (isNaN(value)) value = state.MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND;
-            value = Math.max(state.MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND, Math.min(value, state.MAX_NODE_COUNT_PER_LAYER_FROM_BACKEND));
-            e.target.value = value;
+
+        layerDiv.querySelector(`#${inputId}`).addEventListener('change', (event) => {
+            let value = Number.parseInt(event.target.value, 10);
+            if (Number.isNaN(value)) value = state.minNodeCountPerLayer;
+            value = Math.max(state.minNodeCountPerLayer, Math.min(value, state.maxNodeCountPerLayer));
+            event.target.value = value;
             state.hiddenLayerSizes[index] = value;
+            useCustomConfiguration();
             applyGeneralSettings();
         });
     });
-    addHiddenLayerButton.disabled = state.hiddenLayerSizes.length >= state.MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND;
+
+    addHiddenLayerButton.disabled = state.hiddenLayerSizes.length >= state.maxHiddenLayersCount;
     removeHiddenLayerButton.disabled = state.hiddenLayerSizes.length === 0;
 }
 
 export function setupLayerBuilderEvents() {
     addHiddenLayerButton.addEventListener('click', () => {
-        if (state.hiddenLayerSizes.length < state.MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND) {
+        if (state.hiddenLayerSizes.length < state.maxHiddenLayersCount) {
             state.hiddenLayerSizes.push(8);
+            useCustomConfiguration();
             renderLayerBuilder();
-            presetSelector.value = "Custom";
             applyGeneralSettings();
         }
     });
+
     removeHiddenLayerButton.addEventListener('click', () => {
         if (state.hiddenLayerSizes.length > 0) {
             state.hiddenLayerSizes.pop();
+            useCustomConfiguration();
             renderLayerBuilder();
             applyGeneralSettings();
         }

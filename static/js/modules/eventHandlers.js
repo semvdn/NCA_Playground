@@ -1,48 +1,68 @@
 // static/js/modules/eventHandlers.js
 
 import {
-    toggleRunButton, stepButton, stepBackButton, randomizeGridButton,
+    ncaCanvas, toggleRunButton, stepButton, stepBackButton, randomizeGridButton,
     randomizeArchitectureButton, restartButton, randomizeWeightsButton,
-    captureScreenshotButton, toggleRecordingButton,
-    activationSelector, weightScaleSlider, biasSlider, colormapSelector, presetSelector,
-    speedSlider, speedValue, clearSelectionButton,
-    presetGridPatternSelector, applyPresetGridPatternButton
+    captureScreenshotButton, activationSelector, weightScaleSlider, weightScaleValue,
+    biasSlider, biasValue, colormapSelector, presetSelector, speedSlider, speedValue,
+    clearSelectionButton, presetGridPatternSelector, applyPresetGridPatternButton
 } from './domElements.js';
-import { state, setIsRunning, setMlpParamsForViz, setHiddenLayerSizes, setMaxHiddenLayersCount, setMinNodeCountPerLayer, setMaxNodeCountPerLayer, setCurrentFPS } from './state.js';
+import {
+    state, setIsRunning, setAnimationIntervalId, setMlpParamsForViz,
+    setMaxHiddenLayersCount, setMinNodeCountPerLayer, setMaxNodeCountPerLayer,
+    setCurrentFPS
+} from './state.js';
 import { fetchApi } from './api.js';
 import { drawNcaGrid } from './ncaCanvasRenderer.js';
 import { updateUiControls, updateNetworkLegend, updateCellDetails, applyGeneralSettings, clearCellDetailsDisplay } from './uiManager.js';
 import { buildNetworkViz } from './networkVisualizer.js';
-import { startRecording, stopRecording } from './recordingManager.js';
-import { resetManualWeightEditorUI } from './manualWeightEditor.js';
-import { renderLayerBuilder } from './layerBuilder.js'; // Needed for initial render
+import { renderLayerBuilder } from './layerBuilder.js';
 import { gridPresets } from './gridPresets.js';
 
 let animationIntervalId = null;
 
+function stopAnimationLoop() {
+    if (animationIntervalId) clearInterval(animationIntervalId);
+    animationIntervalId = null;
+    setAnimationIntervalId(null);
+}
+
+function updateRunButton() {
+    toggleRunButton.textContent = state.isRunning ? 'Stop' : 'Start';
+    toggleRunButton.classList.toggle('running', state.isRunning);
+}
+
+function setRunning(running) {
+    setIsRunning(Boolean(running));
+    updateRunButton();
+    if (state.isRunning) startAnimationLoop();
+    else stopAnimationLoop();
+}
+
+function syncRunState(isPaused) {
+    if (typeof isPaused === 'boolean') setRunning(!isPaused);
+}
+
 async function handleStep(isBack = false) {
     const endpoint = isBack ? '/api/step_back' : '/api/step';
     const data = await fetchApi(endpoint, 'POST');
-    if (data) {
-        drawNcaGrid(data.grid_colors);
-        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-        if (isBack && data.is_paused !== undefined && data.is_paused && state.isRunning) {
-            setIsRunning(false);
-            toggleRunButton.textContent = 'Start';
-            toggleRunButton.classList.remove('running');
-            if (animationIntervalId) clearInterval(animationIntervalId);
-        }
-    }
+    if (!data) return;
+
+    drawNcaGrid(data.grid_colors);
+    if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+    if (isBack) syncRunState(data.is_paused);
 }
 
 function startAnimationLoop() {
-    if (animationIntervalId) clearInterval(animationIntervalId);
-    animationIntervalId = setInterval(async () => {
-        if (state.isRunning) {
-            await handleStep(false);
-        }
-    }, 1000 / state.currentFPS); // Convert FPS to milliseconds
-    state.animationIntervalId = animationIntervalId; // Store in state
+    stopAnimationLoop();
+    animationIntervalId = setInterval(() => {
+        if (state.isRunning) handleStep(false);
+    }, 1000 / state.currentFPS);
+    setAnimationIntervalId(animationIntervalId);
+}
+
+function useCustomConfiguration() {
+    presetSelector.value = 'Custom';
 }
 
 export async function loadInitialConfig() {
@@ -52,53 +72,35 @@ export async function loadInitialConfig() {
     setMaxHiddenLayersCount(config.constraints.max_hidden_layers);
     setMinNodeCountPerLayer(config.constraints.min_node_size);
     setMaxNodeCountPerLayer(config.constraints.max_node_size);
-
     state.gridSize = config.default_params.grid_size;
     setMlpParamsForViz(config.mlp_params_for_viz);
 
-    Object.keys(config.presets).forEach(name => {
-        presetSelector.add(new Option(name, name));
-    });
-    config.available_activations.forEach(name => {
-        activationSelector.add(new Option(name, name));
-    });
-    config.available_colormaps.forEach(name => {
-        colormapSelector.add(new Option(name, name));
-    });
+    presetSelector.innerHTML = '';
+    Object.keys(config.presets).forEach(name => presetSelector.add(new Option(name, name)));
+    activationSelector.innerHTML = '';
+    config.available_activations.forEach(name => activationSelector.add(new Option(name, name)));
+    colormapSelector.innerHTML = '';
+    config.available_colormaps.forEach(name => colormapSelector.add(new Option(name, name)));
     colormapSelector.value = config.current_colormap;
 
-    const initialPresetName = "Flicker";
+    const initialPresetName = config.presets.Linear ? 'Linear' : 'Custom';
     presetSelector.value = initialPresetName;
-    const initialPresetData = config.presets[initialPresetName];
-    if (initialPresetData) {
-        const [_seed, layers, act, w_scale, b_val] = initialPresetData;
-        updateUiControls({ layer_sizes: layers, activation: act, weight_scale: w_scale, bias: b_val }, true);
+    const preset = config.presets[initialPresetName];
+    if (preset) {
+        const [, layers, activation, weightScale, bias] = preset;
+        updateUiControls({ layer_sizes: layers, activation, weight_scale: weightScale, bias });
     } else {
-        updateUiControls(config.default_params, true);
+        updateUiControls(config.default_params);
     }
 
     drawNcaGrid(config.initial_grid_colors);
     buildNetworkViz();
     updateNetworkLegend();
-    renderLayerBuilder(); // Initial render of layer builder
-
-    if (config.is_paused) {
-        toggleRunButton.textContent = 'Start';
-        toggleRunButton.classList.remove('running');
-        setIsRunning(false);
-    } else {
-        toggleRunButton.textContent = 'Stop';
-        toggleRunButton.classList.add('running');
-        setIsRunning(true);
-        startAnimationLoop();
-    }
-    applyManualWeightsButton.disabled = true;
-    // populateManualWeightLayerSelector(); // Called by updateUiControls
+    renderLayerBuilder();
+    setRunning(!config.is_paused);
 }
 
-
 export function setupGlobalEventListeners() {
-    // Populate preset grid patterns
     for (const key in gridPresets) {
         const option = document.createElement('option');
         option.value = key;
@@ -107,30 +109,17 @@ export function setupGlobalEventListeners() {
     }
 
     captureScreenshotButton.addEventListener('click', () => {
-        const dataURL = ncaCanvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = dataURL;
-        const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
-        a.download = `canvas_screenshot_${timestamp}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const anchor = document.createElement('a');
+        anchor.href = ncaCanvas.toDataURL('image/png');
+        anchor.download = `canvas_screenshot_${new Date().toISOString().replace(/[:.-]/g, '')}.png`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
     });
 
     toggleRunButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/toggle_pause', 'POST');
-        if (data) {
-            setIsRunning(!data.is_paused);
-            if (state.isRunning) {
-                toggleRunButton.textContent = 'Stop';
-                toggleRunButton.classList.add('running');
-                startAnimationLoop();
-            } else {
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (state.animationIntervalId) clearInterval(state.animationIntervalId);
-            }
-        }
+        if (data) syncRunState(data.is_paused);
     });
 
     stepButton.addEventListener('click', () => handleStep(false));
@@ -138,184 +127,109 @@ export function setupGlobalEventListeners() {
 
     randomizeGridButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/randomize_grid', 'POST', { seed: Date.now() });
-        if (data) {
-            drawNcaGrid(data.grid_colors);
-            if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-            if (data.is_paused && state.isRunning) {
-                setIsRunning(false);
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (state.animationIntervalId) clearInterval(state.animationIntervalId);
-            }
-        }
+        if (!data) return;
+        drawNcaGrid(data.grid_colors);
+        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+        syncRunState(data.is_paused);
     });
 
     randomizeArchitectureButton.addEventListener('click', async () => {
-        const wasRunning = state.isRunning;
-        const data = await fetchApi('/api/randomize_architecture', 'POST', { was_running: wasRunning });
-        if (data) {
-            drawNcaGrid(data.grid_colors);
-            setMlpParamsForViz(data.mlp_params_for_viz);
-            updateUiControls(data.current_params, true);
-            buildNetworkViz();
-            updateNetworkLegend();
-            if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-            if (data.is_paused) {
-                setIsRunning(false);
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (state.animationIntervalId) clearInterval(state.animationIntervalId);
-            } else {
-                setIsRunning(true);
-                toggleRunButton.textContent = 'Stop';
-                toggleRunButton.classList.add('running');
-                startAnimationLoop();
-            }
-            applyManualWeightsButton.disabled = true;
-            // populateManualWeightLayerSelector(); // Called by updateUiControls
-            resetManualWeightEditorUI();
-        }
+        const data = await fetchApi('/api/randomize_architecture', 'POST', { was_running: state.isRunning });
+        if (!data) return;
+        drawNcaGrid(data.grid_colors);
+        setMlpParamsForViz(data.mlp_params_for_viz);
+        updateUiControls(data.current_params);
+        presetSelector.value = 'Custom';
+        renderLayerBuilder();
+        buildNetworkViz();
+        updateNetworkLegend();
+        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+        syncRunState(data.is_paused);
     });
 
     restartButton.addEventListener('click', async () => {
         const data = await fetchApi('/api/restart', 'POST');
-        if (data) {
-            drawNcaGrid(data.initial_grid_colors);
-            setMlpParamsForViz(data.mlp_params_for_viz);
-            updateUiControls(data.current_params, true);
-            buildNetworkViz();
-            updateNetworkLegend();
-            if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-            if (data.is_paused) {
-                setIsRunning(false);
-                toggleRunButton.textContent = 'Start';
-                toggleRunButton.classList.remove('running');
-                if (state.animationIntervalId) clearInterval(state.animationIntervalId);
-            } else {
-                setIsRunning(true);
-                toggleRunButton.textContent = 'Stop';
-                toggleRunButton.classList.add('running');
-                startAnimationLoop();
-            }
-            // applySettingsButton.disabled = true; // Removed
-            applyManualWeightsButton.disabled = true;
-            // populateManualWeightLayerSelector(); // Called by updateUiControls
-            resetManualWeightEditorUI();
-        }
+        if (!data) return;
+        drawNcaGrid(data.initial_grid_colors);
+        setMlpParamsForViz(data.mlp_params_for_viz);
+        updateUiControls(data.current_params);
+        renderLayerBuilder();
+        buildNetworkViz();
+        updateNetworkLegend();
+        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+        syncRunState(data.is_paused);
     });
 
     randomizeWeightsButton.addEventListener('click', async () => {
-        const wasRunning = state.isRunning;
-        try {
-            const data = await fetchApi('/api/randomize_weights', 'POST', { was_running: wasRunning });
-            if (data) {
-                drawNcaGrid(data.grid_colors);
-                setMlpParamsForViz(data.mlp_params_for_viz);
-                updateUiControls(data.current_params, true);
-                buildNetworkViz();
-                updateNetworkLegend();
-                if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-                if (data.is_paused) {
-                    setIsRunning(false);
-                    toggleRunButton.textContent = 'Start';
-                    toggleRunButton.classList.remove('running');
-                    if (state.animationIntervalId) clearInterval(state.animationIntervalId);
-                } else {
-                    setIsRunning(true);
-                    toggleRunButton.textContent = 'Stop';
-                    toggleRunButton.classList.add('running');
-                    startAnimationLoop();
-                }
-                applyManualWeightsButton.disabled = true;
-                resetManualWeightEditorUI();
-            }
-        } catch (error) {
-            console.error('Error randomizing weights:', error);
-            // Error handling is already in fetchApi, so just log here if needed.
-        }
+        const data = await fetchApi('/api/randomize_weights', 'POST');
+        if (!data) return;
+        drawNcaGrid(data.grid_colors);
+        setMlpParamsForViz(data.mlp_params_for_viz);
+        updateUiControls(data.current_params);
+        buildNetworkViz();
+        updateNetworkLegend();
+        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+        syncRunState(data.is_paused);
     });
 
-    activationSelector.addEventListener('change', applyGeneralSettings);
-    weightScaleSlider.addEventListener('input', (e) => {
-        state.weightScaleValue.textContent = parseFloat(e.target.value).toFixed(1); // Direct DOM update
+    activationSelector.addEventListener('change', () => {
+        useCustomConfiguration();
         applyGeneralSettings();
     });
-    biasSlider.addEventListener('input', (e) => {
-        state.biasValue.textContent = parseFloat(e.target.value).toFixed(1); // Direct DOM update
+    weightScaleSlider.addEventListener('input', event => {
+        weightScaleValue.textContent = Number.parseFloat(event.target.value).toFixed(1);
+        useCustomConfiguration();
+        applyGeneralSettings();
+    });
+    biasSlider.addEventListener('input', event => {
+        biasValue.textContent = Number.parseFloat(event.target.value).toFixed(1);
+        useCustomConfiguration();
         applyGeneralSettings();
     });
 
-    colormapSelector.addEventListener('change', async (e) => {
-        const newColormap = e.target.value;
-        const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: newColormap });
-        if (data) {
-            drawNcaGrid(data.grid_colors);
-            if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-        }
+    colormapSelector.addEventListener('change', async event => {
+        const data = await fetchApi('/api/set_colormap', 'POST', { colormap_name: event.target.value });
+        if (!data) return;
+        drawNcaGrid(data.grid_colors);
+        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
     });
 
     presetSelector.addEventListener('change', async () => {
-        const selectedPresetName = presetSelector.value;
-        if (selectedPresetName !== "Custom") {
-            const config = await fetchApi('/api/config');
-            if (config && config.presets[selectedPresetName]) {
-                const [_seed, layers, act, w_scale, b_val] = config.presets[selectedPresetName];
-                updateUiControls({ layer_sizes: layers, activation: act, weight_scale: w_scale, bias: b_val }, true);
-                applyGeneralSettings();
-            }
-        } else {
-            applyGeneralSettings();
-        }
+        const selected = presetSelector.value;
+        if (selected === 'Custom') return;
+        const config = await fetchApi('/api/config');
+        if (!config?.presets[selected]) return;
+        const [, layers, activation, weightScale, bias] = config.presets[selected];
+        updateUiControls({ layer_sizes: layers, activation, weight_scale: weightScale, bias });
+        renderLayerBuilder();
+        await applyGeneralSettings();
     });
 
-    speedSlider.addEventListener('input', (e) => {
-        setCurrentFPS(parseInt(e.target.value));
+    speedSlider.addEventListener('input', event => {
+        setCurrentFPS(Number.parseInt(event.target.value, 10));
         speedValue.textContent = state.currentFPS;
         if (state.isRunning) startAnimationLoop();
     });
-    setCurrentFPS(parseInt(speedSlider.value));
+    setCurrentFPS(Number.parseInt(speedSlider.value, 10));
 
     clearSelectionButton.addEventListener('click', clearCellDetailsDisplay);
 
     applyPresetGridPatternButton.addEventListener('click', async () => {
-        const selectedPatternKey = presetGridPatternSelector.value;
-        if (!selectedPatternKey) {
-            alert("Please select a grid pattern to apply.");
+        const selected = presetGridPatternSelector.value;
+        if (!selected) {
+            alert('Please select a grid pattern to apply.');
             return;
         }
+        const pattern = gridPresets[selected];
+        if (!pattern) return;
 
-        const pattern = gridPresets[selectedPatternKey];
-        if (!pattern) {
-            console.error(`Pattern '${selectedPatternKey}' not found.`);
-            return;
-        }
-
-        const newGrid = pattern.pattern(state.gridSize, state.gridSize); // Assuming square grid
-        const wasRunning = state.isRunning;
-
-        try {
-            const data = await fetchApi('/api/set_grid_state', 'POST', {
-                grid_state: newGrid,
-                was_running: wasRunning
-            });
-            if (data) {
-                drawNcaGrid(data.grid_colors);
-                if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-                if (data.is_paused) {
-                    setIsRunning(false);
-                    toggleRunButton.textContent = 'Start';
-                    toggleRunButton.classList.remove('running');
-                    if (state.animationIntervalId) clearInterval(state.animationIntervalId);
-                } else {
-                    setIsRunning(true);
-                    toggleRunButton.textContent = 'Stop';
-                    toggleRunButton.classList.add('running');
-                    startAnimationLoop();
-                }
-            }
-        } catch (error) {
-            console.error('Error applying preset grid pattern:', error);
-            alert('Failed to apply grid pattern. See console for details.');
-        }
+        const data = await fetchApi('/api/set_grid_state', 'POST', {
+            grid_state: pattern.pattern(state.gridSize, state.gridSize),
+            was_running: state.isRunning
+        });
+        if (!data) return;
+        drawNcaGrid(data.grid_colors);
+        if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
+        syncRunState(data.is_paused);
     });
 }

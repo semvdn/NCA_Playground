@@ -35,15 +35,6 @@ export const presetGridPatternSelector = document.getElementById('presetGridPatt
 export const applyPresetGridPatternButton = document.getElementById('applyPresetGridPatternButton');
 export const restartButton = document.getElementById('restartButton');
 
-// Manual Weight Editor Elements
-export const manualWeightLayerSelector = document.getElementById('manualWeightLayerSelector');
-export const manualWeightNeuronSelector = document.getElementById('manualWeightNeuronSelector');
-export const manualWeightPresetSelector = document.getElementById('manualWeightPresetSelector');
-export const manualWeightInputContainer = document.getElementById('manualWeightInputContainer');
-export const manualWeightInputContainerTitle = document.getElementById('manualWeightInputContainerTitle');
-export const applyManualWeightsButton = document.getElementById('applyManualWeightsButton');
-export const manualWeightInfoText = document.getElementById('manualWeightInfoText');
-
 export const cellInfoLabel = document.getElementById('cellInfoLabel');
 export const neighborhoodDisplay = document.getElementById('neighborhoodDisplay');
 export const activationDisplay = document.getElementById('activationDisplay');

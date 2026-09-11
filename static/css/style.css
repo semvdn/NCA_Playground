@@ -1,9 +1,8 @@
-/* static/css/style.css */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
+    background: #f4f4f4;
     color: #333;
     display: flex;
     justify-content: center;
@@ -16,25 +15,17 @@ body {
     margin: 20px auto;
     background: #fff;
     padding: 20px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-header h1 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 20px;
-}
-
-.main-content {
-    display: flex;
-    flex-wrap: wrap; /* Allow wrapping for smaller screens */
-    gap: 20px;
-}
-
+header h1 { text-align: center; margin-bottom: 20px; }
+.main-content { display: flex; flex-wrap: wrap; gap: 20px; }
+.left-panel { flex: 0 0 auto; }
 .right-panel {
-    flex: 1; 
-    min-width: 350px; /* Adjusted */
-    background-color: #f9f9f9;
+    flex: 1;
+    min-width: 350px;
+    background: #f9f9f9;
     padding: 15px;
     border-radius: 5px;
 }
@@ -43,33 +34,20 @@ header h1 {
     margin-bottom: 15px;
     border: 1px solid #ccc;
     display: inline-block;
-    width: fit-content; /* Ensure container wraps canvas */
+    width: fit-content;
 }
 
-#ncaCanvas {
-    display: block; 
-    background-color: #eee;
-    cursor: crosshair;
-}
-
-.controls {
-    padding: 10px;
-    /* border: 1px solid #ddd; */ /* Removed border from main controls div */
-    border-radius: 5px;
-    background-color: #fdfdfd;
-}
-
+#ncaCanvas { display: block; background: #eee; cursor: crosshair; }
+.controls { padding: 10px; border-radius: 5px; background: #fdfdfd; }
 .control-section {
     border: 1px solid #e0e0e0;
     border-radius: 5px;
-    padding: 10px 15px; /* Increased padding */
+    padding: 10px 15px;
     margin-bottom: 15px;
-    background-color: #f8f8f8;
+    background: #f8f8f8;
 }
-
 .control-section h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
     color: #555;
     border-bottom: 1px solid #eee;
     padding-bottom: 5px;
@@ -78,202 +56,108 @@ header h1 {
 
 .controls label {
     display: inline-block;
-    margin: 8px 5px 5px 0; /* Adjusted margin */
+    margin: 8px 5px 5px 0;
     font-weight: bold;
     font-size: 0.9em;
 }
 .controls input[type="text"],
-.controls input[type="number"], /* Added number type */
+.controls input[type="number"],
 .controls select {
-    padding: 7px; /* Adjusted padding */
+    padding: 7px;
     margin-right: 10px;
     margin-bottom: 5px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-sizing: border-box; /* Important for consistent sizing */
+    box-sizing: border-box;
 }
-.controls input[type="range"] {
-    vertical-align: middle;
-    margin-bottom: 5px;
-}
-
+.controls input[type="range"] { vertical-align: middle; margin-bottom: 5px; }
 .controls button {
     padding: 8px 12px;
-    background-color: #5cb85c;
-    color: white;
-    border: none;
+    background: #5cb85c;
+    color: #fff;
+    border: 0;
     border-radius: 4px;
     cursor: pointer;
     margin: 5px 2px;
     font-size: 0.9em;
 }
-.controls button:hover {
-    background-color: #4cae4c;
-}
-.controls button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
+.controls button:hover { background: #4cae4c; }
+.controls button:disabled { background: #ccc; cursor: not-allowed; opacity: 0.7; }
 
-#toggleRunButton.running {
-    background-color: #d9534f;
-}
-#toggleRunButton.running:hover {
-    background-color: #c9302c;
-}
+#toggleRunButton.running { background: #d9534f; }
+#toggleRunButton.running:hover { background: #c9302c; }
+#captureScreenshotButton { background: #28a745; }
+#captureScreenshotButton:hover { background: #218838; }
+#toggleRecordingButton { background: #007bff; }
+#toggleRecordingButton:hover { background: #0056b3; }
+#toggleRecordingButton.recording { background: #dc3545; }
+#toggleRecordingButton.recording:hover { background: #c82333; }
 
-/* Styles for Capture Buttons */
-#captureScreenshotButton {
-    background-color: #28a745; /* Green for success/capture */
-}
-
-#captureScreenshotButton:hover {
-    background-color: #218838;
-}
-
-#toggleRecordingButton {
-    background-color: #007bff; /* Blue for primary action */
-}
-
-#toggleRecordingButton:hover {
-    background-color: #0056b3;
-}
-
-#toggleRecordingButton.recording {
-    background-color: #dc3545; /* Red when recording (danger) */
-}
-
-#toggleRecordingButton.recording:hover {
-    background-color: #c82333;
-}
-
-#applySettingsButton, #applyManualWeightsButton {
-    background-color: #007bff; 
-}
-
-#applySettingsButton:hover, #applyManualWeightsButton:hover {
-    background-color: #0056b3;
-}
-
-/* Layer Builder Styles */
 #layerBuilderContainer .layer-input-group {
     margin-bottom: 8px;
     display: flex;
     align-items: center;
 }
-#layerBuilderContainer .layer-input-group label {
-    margin-right: 5px;
-    min-width: 130px; /* Align labels */
-}
-#layerBuilderContainer .layer-input-group input[type="number"] {
-    width: 60px; /* Smaller width for layer size */
-}
+#layerBuilderContainer .layer-input-group label { margin-right: 5px; min-width: 130px; }
+#layerBuilderContainer .layer-input-group input[type="number"] { width: 60px; }
 
-/* Manual Weight Editor Styles */
-#manualWeightInputContainer {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); /* Responsive grid for weights */
-    gap: 8px;
-    margin-top: 10px;
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    background-color: #fff;
-    border-radius: 4px;
-    max-height: 200px; /* Prevent excessive height */
-    overflow-y: auto;   /* Scroll if too many weights */
-}
-#manualWeightInputContainer .weight-input-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-#manualWeightInputContainer .weight-input-group label {
-    font-size: 0.8em;
-    margin-bottom: 2px;
-}
-#manualWeightInputContainer .weight-input-group input[type="number"] {
-    width: 60px;
-    padding: 5px;
-    text-align: center;
-}
-.info-text {
-    font-size: 0.85em;
-    color: #666;
-    margin-top: 10px;
-}
-
-
-.right-panel h2 {
-    margin-top: 0;
-    color: #555;
-}
-
-#cellInfoLabel {
-    font-weight: bold;
-    margin-bottom: 10px;
-}
+.right-panel h2 { margin-top: 0; color: #555; }
+#cellInfoLabel { font-weight: bold; margin-bottom: 10px; }
 #clearSelectionButton {
     margin-left: 10px;
     padding: 5px 8px;
     font-size: 0.8em;
-    background-color: #777;
+    background: #777;
+    color: #fff;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
 }
-#clearSelectionButton:hover {
-    background-color: #555;
-}
-
+#clearSelectionButton:hover { background: #555; }
 
 .info-explanation {
     font-size: 0.85em;
     color: #666;
     margin-bottom: 10px;
-    padding: 8px; /* Added padding */
-    border-radius: 4px; /* Rounded corners */
-    background-color: #f0f0f0; /* Light background */
+    padding: 8px;
+    border-radius: 4px;
+    background: #f0f0f0;
 }
-
 #neighborhoodDisplay, #activationDisplay {
-    background-color: #e8e8e8; /* Slightly different background */
+    background: #e8e8e8;
     padding: 10px;
     border-radius: 4px;
     font-family: monospace;
     white-space: pre-wrap;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
     margin-bottom: 10px;
-    max-height: 180px; /* Adjusted height */
+    max-height: 180px;
     overflow-y: auto;
     font-size: 0.9em;
     border: 1px solid #ddd;
 }
 
 .network-viz-container {
-    position: relative; 
+    position: relative;
     width: 100%;
-    height: 300px; 
+    height: 300px;
     border: 1px solid #ccc;
     margin-top: 10px;
-    overflow: hidden; 
+    overflow: hidden;
 }
-
+#networkCanvas { width: 100%; height: 100%; background: #f0f0f0; }
 .network-legend {
     position: absolute;
     top: 10px;
     right: 10px;
-    background-color: rgba(255, 255, 255, 0.85); /* More opaque */
+    background: rgba(255, 255, 255, 0.85);
     padding: 8px;
     border-radius: 5px;
     font-size: 0.8em;
     border: 1px solid #ddd;
-    z-index: 10; 
+    z-index: 10;
 }
-
-.network-legend div {
-    margin-bottom: 5px;
-    display: flex;
-    align-items: center;
-}
-
+.network-legend div { margin-bottom: 5px; display: flex; align-items: center; }
 .network-legend .color-box {
     width: 15px;
     height: 15px;
@@ -282,68 +166,33 @@ header h1 {
     display: inline-block;
 }
 
-#networkCanvas {
-    width: 100%;
-    height: 100%;
-    background-color: #f0f0f0;
-}
- 
-/* Collapsible sections */
 .collapsible {
-    background-color: #e2e2e2; /* Slightly darker */
-    color: #333; /* Darker text */
+    background: #e2e2e2;
+    color: #333;
     cursor: pointer;
-    padding: 15px 20px; /* Adjusted padding */
+    padding: 15px 20px;
     width: 100%;
-    border: none;
+    border: 0;
     text-align: left;
     outline: none;
-    font-size: 1.05em; /* Slightly larger font */
+    font-size: 1.05em;
     font-weight: bold;
     transition: 0.3s;
     margin-top: 10px;
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
- 
-.collapsible.active, .collapsible:hover {
-    background-color: #d0d0d0; /* Darker hover/active */
-}
-.collapsible:after { /* Arrow indicator */
-    content: '\02795'; /* Unicode character for "plus" sign (+) */
-    font-size: 13px;
-    color: #555;
-    float: right;
-    margin-left: 5px;
-}
-.collapsible.active:after {
-    content: "\2796"; /* Unicode character for "minus" sign (-) */
-}
- 
+.collapsible.active, .collapsible:hover { background: #d0d0d0; }
+.collapsible::after { content: '\02795'; font-size: 13px; color: #555; float: right; margin-left: 5px; }
+.collapsible.active::after { content: '\2796'; }
 .content {
     padding: 0 18px;
-    display: none; /* Initially hidden */
+    display: none;
     overflow: hidden;
-    background-color: #f9f9f9; /* Lighter than section background */
-    border-left: 1px solid #e0e0e0;
-    border-right: 1px solid #e0e0e0;
-    border-bottom: 1px solid #e0e0e0;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
+    background: #f9f9f9;
+    border: 0 solid #e0e0e0;
+    border-width: 0 1px 1px;
+    border-radius: 0 0 4px 4px;
 }
-/* Specific content sections might have their own controls div inside */
-.content > .controls {
-    border: none; /* Remove border if controls is direct child */
-    background-color: transparent; /* Make it inherit background */
-    padding-top: 15px;
-}
-
-
-/* Style for the recording timer */
-#recordingTimer {
-    margin-left: 15px;
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #007bff; /* Blue color for visibility */
-    vertical-align: middle;
-}
+.content > .controls { border: 0; background: transparent; padding-top: 15px; }
+#recordingTimer { margin-left: 15px; font-size: 1.1em; font-weight: bold; color: #007bff; vertical-align: middle; }

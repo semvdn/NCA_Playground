@@ -23,11 +23,10 @@ The grid wraps at the boundaries, so every cell always has nine inputs. Hidden l
 ## Features
 
 - Start, stop, single-step, restart, and step backward through recent NCA states.
-- Change the MLP architecture by adding/removing hidden layers and changing their widths.
+- Change the MLP architecture by adding/removing hidden layers and changing their widths; manual changes automatically switch the preset selector to Custom.
 - Switch activation functions and adjust weight scale and bias.
 - Randomize the grid, weights, or complete architecture.
 - Apply predefined grid patterns.
-- Edit incoming weights for individual neurons or whole layers.
 - Click any cell to inspect its 3x3 neighborhood and layer activations.
 - Visualize network topology, activation values, and positive/negative weights.
 - Switch among several colormaps.
@@ -51,7 +50,6 @@ The grid wraps at the boundaries, so every cell always has nine inputs. Hidden l
 │           ├── eventHandlers.js       # Main interaction wiring
 │           ├── gridPresets.js         # Initial grid patterns
 │           ├── layerBuilder.js        # Architecture controls
-│           ├── manualWeightEditor.js  # Direct neuron-weight editing
 │           ├── ncaCanvasRenderer.js   # Grid rendering and selection
 │           ├── networkVisualizer.js   # Network diagram
 │           ├── recordingManager.js    # Canvas video capture

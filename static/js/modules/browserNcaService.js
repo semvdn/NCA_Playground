@@ -270,32 +270,7 @@ class FlexibleMLP {
         };
     }
 
-    getIncomingWeights(layerIdx, neuronIdx) {
-        if (layerIdx < 0 || layerIdx >= this.weights.length) throw new Error('Invalid layer index.');
-        const inSize = this.layerSizes[layerIdx];
-        const outSize = this.layerSizes[layerIdx + 1];
-        if (neuronIdx < 0 || neuronIdx >= outSize) throw new Error('Invalid neuron index.');
-        const result = new Array(inSize);
-        for (let inIdx = 0; inIdx < inSize; inIdx++) {
-            result[inIdx] = this.weights[layerIdx][inIdx * outSize + neuronIdx];
-        }
-        return result;
-    }
 
-    setIncomingWeights(layerIdx, neuronIdx, newWeights) {
-        if (layerIdx < 0 || layerIdx >= this.weights.length) throw new Error('Invalid layer index.');
-        const inSize = this.layerSizes[layerIdx];
-        const outSize = this.layerSizes[layerIdx + 1];
-        if (neuronIdx < 0 || neuronIdx >= outSize) throw new Error('Invalid neuron index.');
-        if (!Array.isArray(newWeights) || newWeights.length !== inSize) {
-            throw new Error(`Expected ${inSize} incoming weights.`);
-        }
-        for (let inIdx = 0; inIdx < inSize; inIdx++) {
-            const value = Number(newWeights[inIdx]);
-            if (!Number.isFinite(value)) throw new Error('Weights must be finite numbers.');
-            this.weights[layerIdx][inIdx * outSize + neuronIdx] = value;
-        }
-    }
 }
 
 class NeuralCellularAutomaton {
@@ -470,6 +445,7 @@ export class BrowserNCAService {
     applySettings(data = {}) {
         const presetName = data.preset_name;
         const current = this.nca.getCurrentParams();
+        const wasPaused = this.nca.paused;
         let message;
 
         if (presetName && presetName !== 'Custom' && PRESETS[presetName]) {
@@ -482,6 +458,7 @@ export class BrowserNCAService {
                 bias,
                 seed
             });
+            this.nca.paused = wasPaused;
             message = `Settings applied: Preset '${presetName}' loaded.`;
         } else {
             const layerSizes = parseLayerSizes(data.layer_sizes, current.layer_sizes);
@@ -614,35 +591,6 @@ export class BrowserNCAService {
         return {
             message: 'NCA reinitialized and restarted from last seed with current weights.',
             initial_grid_colors: this.colors(),
-            mlp_params_for_viz: this.nca.mlp.getParamsForViz(),
-            current_params: this.nca.getCurrentParams(),
-            is_paused: this.nca.paused
-        };
-    }
-
-    getNeuronWeights(layerIdx, neuronIdx) {
-        return { weights: this.nca.mlp.getIncomingWeights(Number(layerIdx), Number(neuronIdx)) };
-    }
-
-    setNeuronWeights(data = {}) {
-        const layerIdx = Number(data.layer_idx);
-        const pattern = data.weights_pattern;
-        const outSize = this.nca.mlp.layerSizes[layerIdx + 1];
-
-        if (data.neuron_idx === 'all') {
-            for (let neuronIdx = 0; neuronIdx < outSize; neuronIdx++) {
-                this.nca.mlp.setIncomingWeights(layerIdx, neuronIdx, pattern);
-            }
-        } else {
-            this.nca.mlp.setIncomingWeights(layerIdx, Number(data.neuron_idx), pattern);
-        }
-        this.nca.history = [];
-
-        const target = data.neuron_idx === 'all'
-            ? `all neurons in Layer ${layerIdx + 1}`
-            : `Layer ${layerIdx + 1}, Neuron ${Number(data.neuron_idx) + 1}`;
-        return {
-            message: `Weights updated for ${target}.`,
             mlp_params_for_viz: this.nca.mlp.getParamsForViz(),
             current_params: this.nca.getCurrentParams(),
             is_paused: this.nca.paused

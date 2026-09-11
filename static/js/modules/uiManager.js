@@ -8,25 +8,18 @@ import {
 import { state, setHiddenLayerSizes, setMlpParamsForViz, setSelectedCell, setCurrentLayerActivations } from './state.js';
 import { drawNcaGrid } from './ncaCanvasRenderer.js';
 import { buildNetworkViz, updateNetworkNodeColors } from './networkVisualizer.js';
-import { populateManualWeightLayerSelector, resetManualWeightEditorUI } from './manualWeightEditor.js'; // Will be created later
 
-export function updateUiControls(params, fromPreset = false) {
-    if (params.layer_sizes) {
-        setHiddenLayerSizes(params.layer_sizes.slice(1, -1)); // [9, HL1, HL2, 1] -> [HL1, HL2]
-        // renderLayerBuilder(); // This will be called from layerBuilder.js
-    }
+export function updateUiControls(params) {
+    if (params.layer_sizes) setHiddenLayerSizes(params.layer_sizes.slice(1, -1));
     if (params.activation) activationSelector.value = params.activation;
     if (params.weight_scale !== undefined) {
         weightScaleSlider.value = params.weight_scale;
-        weightScaleValue.textContent = parseFloat(params.weight_scale).toFixed(1);
+        weightScaleValue.textContent = Number(params.weight_scale).toFixed(1);
     }
     if (params.bias !== undefined) {
         biasSlider.value = params.bias;
-        biasValue.textContent = parseFloat(params.bias).toFixed(1);
+        biasValue.textContent = Number(params.bias).toFixed(1);
     }
-
-    populateManualWeightLayerSelector();
-    resetManualWeightEditorUI();
 }
 
 export function updateNetworkLegend() {
@@ -36,51 +29,51 @@ export function updateNetworkLegend() {
         <div><span class="color-box" style="background-color: rgb(0,255,0);"></span> Pos. Weight</div>
         <div><span class="color-box" style="background-color: rgb(255,255,255); border: 1px solid #ccc;"></span> Low Activation</div>
         <div><span class="color-box" style="background-color: rgb(0,0,255);"></span> High Activation</div>
-        <div><span class="color-box" style="border: 2.5px solid magenta; background-color: white;"></span> Sel. Neuron (Edit)</div>
     `;
 }
 
 export async function updateCellDetails(r, c) {
-    const { fetchApi } = await import('./api.js'); // Dynamic import to avoid circular dependency
+    const { fetchApi } = await import('./api.js');
     const data = await fetchApi(`/api/cell_details?r=${r}&c=${c}`);
-    if (data) {
-        setSelectedCell(data.selected_cell);
-        let cellValueDisplay = "N/A";
-        if (state.currentGridColors && state.currentGridColors[r] && state.currentGridColors[r][c]) {
-            const hex = state.currentGridColors[r][c].substring(1);
-            const R = parseInt(hex.substring(0, 2), 16) / 255;
-            const G = parseInt(hex.substring(2, 4), 16) / 255;
-            const B = parseInt(hex.substring(4, 6), 16) / 255;
-            cellValueDisplay = ((R + G + B) / 3).toFixed(3);
-        }
-        cellInfoLabel.innerHTML = `Selected Cell: (Row=${r}, Col=${c})<br>Approx. Value: ${cellValueDisplay}`;
-
-        let neighText = "Neighborhood (3x3 Input - Row Major):\n";
-        data.neighborhood.forEach(row => {
-            neighText += row.map(val => val.toFixed(3)).join("  ") + "\n";
-        });
-        neighborhoodDisplay.textContent = neighText;
-
-        setCurrentLayerActivations(data.layer_activations);
-        let actText = "Layer Activations (Input, Hidden(s), Output):\n";
-        state.currentLayerActivations.forEach((layerAct, i) => {
-            let actSample = layerAct.slice(0, 8).map(val => typeof val === 'number' ? val.toFixed(3) : val).join(", ");
-            if (layerAct.length > 8) actSample += ", ...";
-            actText += `L${i} (Size ${layerAct.length}): [${actSample}]\n`;
-        });
-        activationDisplay.textContent = actText;
-
-        updateNetworkNodeColors(state.currentLayerActivations);
-        clearSelectionButton.style.display = 'inline-block';
-    } else {
+    if (!data) {
         clearCellDetailsDisplay();
+        return;
     }
+
+    setSelectedCell(data.selected_cell);
+    let cellValueDisplay = 'N/A';
+    if (state.currentGridColors?.[r]?.[c]) {
+        const hex = state.currentGridColors[r][c].substring(1);
+        const red = Number.parseInt(hex.substring(0, 2), 16) / 255;
+        const green = Number.parseInt(hex.substring(2, 4), 16) / 255;
+        const blue = Number.parseInt(hex.substring(4, 6), 16) / 255;
+        cellValueDisplay = ((red + green + blue) / 3).toFixed(3);
+    }
+    cellInfoLabel.innerHTML = `Selected Cell: (Row=${r}, Col=${c})<br>Approx. Value: ${cellValueDisplay}`;
+
+    let neighborhoodText = 'Neighborhood (3x3 Input - Row Major):\n';
+    data.neighborhood.forEach(row => {
+        neighborhoodText += row.map(value => value.toFixed(3)).join('  ') + '\n';
+    });
+    neighborhoodDisplay.textContent = neighborhoodText;
+
+    setCurrentLayerActivations(data.layer_activations);
+    let activationText = 'Layer Activations (Input, Hidden(s), Output):\n';
+    state.currentLayerActivations.forEach((layer, index) => {
+        let sample = layer.slice(0, 8).map(value => typeof value === 'number' ? value.toFixed(3) : value).join(', ');
+        if (layer.length > 8) sample += ', ...';
+        activationText += `L${index} (Size ${layer.length}): [${sample}]\n`;
+    });
+    activationDisplay.textContent = activationText;
+
+    updateNetworkNodeColors(state.currentLayerActivations);
+    clearSelectionButton.style.display = 'inline-block';
 }
 
 export function clearCellDetailsDisplay() {
-    cellInfoLabel.textContent = "Click on a CA cell to see details.";
-    neighborhoodDisplay.textContent = "";
-    activationDisplay.textContent = "";
+    cellInfoLabel.textContent = 'Click on a CA cell to see details.';
+    neighborhoodDisplay.textContent = '';
+    activationDisplay.textContent = '';
     setSelectedCell(null);
     setCurrentLayerActivations(null);
     clearSelectionButton.style.display = 'none';
@@ -89,62 +82,48 @@ export function clearCellDetailsDisplay() {
 }
 
 export function setupCollapsibleSections() {
-    var coll = document.getElementsByClassName("collapsible");
-    for (let i = 0; i < coll.length; i++) {
-        coll[i].addEventListener("click", function () {
-            this.classList.toggle("active");
-            var content = this.nextElementSibling;
-            if (content.style.display === "block") {
-                content.style.display = "none";
-            } else {
-                content.style.display = "block";
-            }
+    for (const button of document.getElementsByClassName('collapsible')) {
+        button.addEventListener('click', function () {
+            this.classList.toggle('active');
+            const content = this.nextElementSibling;
+            content.style.display = content.style.display === 'block' ? 'none' : 'block';
         });
-        if (coll[i].classList.contains('active')) {
-            coll[i].nextElementSibling.style.display = "block";
-        }
+        if (button.classList.contains('active')) button.nextElementSibling.style.display = 'block';
     }
 }
 
 export async function applyGeneralSettings() {
-    const { fetchApi } = await import('./api.js'); // Dynamic import
-    const { renderLayerBuilder } = await import('./layerBuilder.js'); // Dynamic import
-
+    const { fetchApi } = await import('./api.js');
     const finalLayerSizes = [9, ...state.hiddenLayerSizes, 1];
+
     try {
-        if (finalLayerSizes[0] !== 9 || finalLayerSizes[finalLayerSizes.length - 1] !== 1) throw new Error("Layers must start with 9 and end with 1.");
-        const hl = finalLayerSizes.slice(1, -1);
-        if (hl.length > state.MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND) throw new Error(`Max ${state.MAX_HIDDEN_LAYERS_COUNT_FROM_BACKEND} hidden layers.`);
-        for (const size of hl) {
-            if (size < state.MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND || size > state.MAX_NODE_COUNT_PER_LAYER_FROM_BACKEND) {
-                throw new Error(`Hidden layer size out of range (${state.MIN_NODE_COUNT_PER_LAYER_FROM_BACKEND}-${state.MAX_NODE_COUNT_PER_LAYER_FROM_BACKEND}).`);
+        const hidden = finalLayerSizes.slice(1, -1);
+        if (hidden.length > state.maxHiddenLayersCount) throw new Error(`Max ${state.maxHiddenLayersCount} hidden layers.`);
+        for (const size of hidden) {
+            if (size < state.minNodeCountPerLayer || size > state.maxNodeCountPerLayer) {
+                throw new Error(`Hidden layer size out of range (${state.minNodeCountPerLayer}-${state.maxNodeCountPerLayer}).`);
             }
         }
-    } catch (e) {
-        alert(`Input Error: ${e.message}`);
-        return;
+    } catch (error) {
+        alert(`Input Error: ${error.message}`);
+        return null;
     }
 
-    const params = {
+    const data = await fetchApi('/api/apply_settings', 'POST', {
         preset_name: presetSelector.value,
         layer_sizes: finalLayerSizes.join(','),
         activation: activationSelector.value,
-        weight_scale: parseFloat(weightScaleSlider.value),
-        bias: parseFloat(biasSlider.value)
-    };
-    const data = await fetchApi('/api/apply_settings', 'POST', params);
+        weight_scale: Number.parseFloat(weightScaleSlider.value),
+        bias: Number.parseFloat(biasSlider.value)
+    });
+
     if (data) {
         drawNcaGrid(data.grid_colors);
         setMlpParamsForViz(data.mlp_params_for_viz);
-        updateUiControls(data.current_params, data.message.includes("Preset"));
+        updateUiControls(data.current_params);
         buildNetworkViz();
         updateNetworkLegend();
         if (state.selectedCell) updateCellDetails(state.selectedCell.r, state.selectedCell.c);
-        if (data.is_paused && state.isRunning) {
-            state.isRunning = false; // Directly update state, event handler will update button
-            // No need to clear interval here, event handler will do it
-        }
-        populateManualWeightLayerSelector();
-        resetManualWeightEditorUI();
     }
+    return data;
 }

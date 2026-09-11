@@ -79,37 +79,6 @@
                     </div>
                 </div>
 
-                <button class="collapsible">Manual Neuron Weight Editor</button>
-                <div class="content">
-                    <div class="controls">
-                        <div class="control-section" id="manualWeightEditorSection">
-                            <h3>Edit Incoming Weights for a Neuron</h3>
-                            <label for="manualWeightLayerSelector">Target Layer:</label>
-                            <select id="manualWeightLayerSelector"></select>
-                            <label for="manualWeightNeuronSelector">Target Neuron:</label>
-                            <select id="manualWeightNeuronSelector"></select>
-                            <br>
-                            <label for="manualWeightPresetSelector">Load Preset Pattern:</label>
-                            <select id="manualWeightPresetSelector">
-                                <option value="">- Select Pattern -</option>
-                                <option value="zeros">Zeros</option>
-                                <option value="ones">Ones</option>
-                                <option value="random_small">Random Small</option>
-                                <option value="center_on">Center On (3x3)</option>
-                                <option value="vertical_lines">Vertical Lines (3x3)</option>
-                                <option value="horizontal_lines">Horizontal Lines (3x3)</option>
-                                <option value="diag_tl_br">Diagonal TL-BR (3x3)</option>
-                                <option value="diag_tr_bl">Diagonal TR-BL (3x3)</option>
-                            </select>
-                            <div id="manualWeightInputContainerTitle" style="margin-top:10px; font-weight:bold;"></div>
-                            <div id="manualWeightInputContainer">
-                                <!-- Weight inputs will be dynamically generated here -->
-                            </div>
-                            <button id="applyManualWeightsButton" title="Apply the specified weights to the selected neuron(s)." disabled>Apply Manual Weights</button>
-                            <p class="info-text" id="manualWeightInfoText">Select a layer and neuron to edit its incoming weights. For 'All Neurons', only preset patterns can be applied.</p>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="right-panel">
