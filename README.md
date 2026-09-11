@@ -4,91 +4,15 @@ An interactive, browser-native playground for exploring neural cellular automata
 
 **Live app:** https://semvdn.github.io/NCA_Playground/
 
+
 <img width="1042" height="865" alt="NCA Playground screenshot" src="https://github.com/user-attachments/assets/6464c41b-5233-43d5-95a9-44cab8e0f0a9" />
 
-## Browser-native architecture
-
-The entire simulation runs locally in the browser. There is no Flask server, Python runtime, PyTorch process, database, or remote simulation API.
-
-The NCA state and MLP are implemented in JavaScript using typed arrays. The UI still talks through the small `fetchApi()` abstraction, but that abstraction now dispatches to the in-browser NCA service instead of making HTTP requests. This keeps the UI modules decoupled from the simulation implementation while allowing the project to be hosted as a static site on GitHub Pages.
-
-Because the simulation is local, changing weights, stepping the automaton, inspecting cells, and recording the canvas do not send simulation data to a server.
 
 ## What is a neural cellular automaton?
 
 A cellular automaton updates a grid by applying the same local rule at every cell. In this playground, that local rule is neural rather than handwritten: a Multi-Layer Perceptron receives the 9 values in a cell's 3x3 neighborhood and produces the cell's next scalar state.
 
 The grid wraps at the boundaries, so every cell always has nine inputs. Hidden layers can use ReLU, sigmoid, or tanh activations, while the final output is passed through a sigmoid to keep the state in `[0, 1]`.
-
-## Features
-
-- Start, stop, single-step, restart from the current initial grid, and step backward through recent NCA states.
-- Change the MLP architecture by adding/removing hidden layers and changing their widths; manual changes automatically switch the preset selector to Custom.
-- Switch activation functions and adjust weight scale and bias.
-- Randomize the grid, weights, or complete architecture.
-- Apply predefined grid patterns.
-- Click any cell to inspect its exact scalar value, 3x3 neighborhood, and layer activations.
-- Visualize network topology, activation values, and positive/negative weights.
-- Switch among several colormaps.
-- Capture screenshots and record the simulation canvas to video.
-- Run entirely as a static GitHub Pages site with no build step and no runtime dependencies.
-
-## Project structure
-
-```text
-.
-├── index.html                         # Static app entry point
-├── static/
-│   ├── css/style.css                  # Interface styling
-│   └── js/
-│       ├── app.js                     # Frontend bootstrap
-│       └── modules/
-│           ├── api.js                 # UI-facing service adapter
-│           ├── browserNcaService.js   # NCA + MLP engine and app operations
-│           ├── state.js               # Shared UI state
-│           ├── domElements.js         # DOM references
-│           ├── eventHandlers.js       # Main interaction wiring
-│           ├── gridPresets.js         # Initial grid patterns
-│           ├── layerBuilder.js        # Architecture controls
-│           ├── ncaCanvasRenderer.js   # Grid rendering and selection
-│           ├── networkVisualizer.js   # Network diagram
-│           ├── recordingManager.js    # Canvas video capture
-│           └── uiManager.js           # UI synchronization
-├── .github/workflows/pages.yml        # Tests + GitHub Pages deployment
-├── tests/browserNcaService.test.js    # Engine regression tests
-├── package.json                       # Dependency-free Node test command
-└── WEB_DEPLOYMENT.md                  # Deployment notes
-```
-
-## Run locally
-
-No install or build step is required. Because the app uses JavaScript modules, serve the repository with any simple static HTTP server rather than opening `index.html` through `file://`.
-
-For example, if Python happens to be installed:
-
-```bash
-python -m http.server 8000
-```
-
-Then open `http://localhost:8000/`.
-
-Python is only being used here as a convenient static file server; it is not an application dependency. Any equivalent static server works.
-
-## Tests
-
-The browser runtime has no npm dependencies, but the core service is covered by Node's built-in test runner. The suite checks step/back history, wrapped neighborhoods, exact cell inspection, deterministic grid seeds, restart behavior, custom settings, and preset run-state preservation.
-
-```bash
-npm test
-```
-
-The same tests run in GitHub Actions before a Pages deployment is allowed to proceed.
-
-## Deploy to GitHub Pages
-
-The included GitHub Actions workflow deploys `index.html` and `static/` on pushes to `main`.
-
-In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**. See [`WEB_DEPLOYMENT.md`](WEB_DEPLOYMENT.md) for details.
 
 ## Visual showcase
 
@@ -107,3 +31,7 @@ Web UI walkthrough: https://youtu.be/euN4uQ0BBNc
 ## License
 
 See [`LICENSE`](LICENSE).
+
+## AI Use
+
+Generative AI, primarily OpenAI's GPT 5.3 codex, was used extensively as a development tool throughout this project.
