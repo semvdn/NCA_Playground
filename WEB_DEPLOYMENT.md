@@ -12,16 +12,18 @@ python -m http.server 8000
 
 Then open `http://localhost:8000/`.
 
-Python is only being used as a convenient static file server in that example; the application itself executes entirely in the browser.
+Python is only a convenient static file server in that example; the application itself executes entirely in the browser.
+
+## Tests
+
+The project has no npm runtime dependencies. Node is used only for the regression suite:
+
+```bash
+npm test
+```
 
 ## GitHub Pages
 
-A Pages workflow is included in `.github/workflows/pages.yml`. It publishes only `index.html` and `static/`, keeping the Pages artifact focused on the files required by the running application.
+`.github/workflows/pages.yml` runs the engine tests on pushes and pull requests. On `main`, deployment only proceeds after those tests pass. The deployment artifact contains only `index.html` and `static/`.
 
-After applying the patches and pushing `main`:
-
-1. Open **Settings → Pages** in the GitHub repository.
-2. Under **Build and deployment → Source**, choose **GitHub Actions**.
-3. Push to `main` (or run **Deploy GitHub Pages** manually from the Actions tab).
-
-The workflow then deploys the static playground under the repository's GitHub Pages URL.
+In **Settings → Pages**, set **Build and deployment → Source** to **GitHub Actions**. Pushing `main` then tests and deploys the static playground automatically.

@@ -54,7 +54,9 @@ The grid wraps at the boundaries, so every cell always has nine inputs. Hidden l
 │           ├── networkVisualizer.js   # Network diagram
 │           ├── recordingManager.js    # Canvas video capture
 │           └── uiManager.js           # UI synchronization
-├── .github/workflows/pages.yml        # GitHub Pages deployment
+├── .github/workflows/pages.yml        # Tests + GitHub Pages deployment
+├── tests/browserNcaService.test.js    # Engine regression tests
+├── package.json                       # Dependency-free Node test command
 ├── WEB_DEPLOYMENT.md                  # Deployment notes
 └── assets/                            # Showcase media
 ```
@@ -72,6 +74,16 @@ python -m http.server 8000
 Then open `http://localhost:8000/`.
 
 Python is only being used here as a convenient static file server; it is not an application dependency. Any equivalent static server works.
+
+## Tests
+
+The browser runtime has no npm dependencies, but the core service is covered by Node's built-in test runner. The suite checks step/back history, wrapped neighborhoods, exact cell inspection, deterministic grid seeds, restart behavior, custom settings, and preset run-state preservation.
+
+```bash
+npm test
+```
+
+The same tests run in GitHub Actions before a Pages deployment is allowed to proceed.
 
 ## Deploy to GitHub Pages
 
